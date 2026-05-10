@@ -5,110 +5,102 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ISA CONTROL V3</title>
-
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-  <!-- HEADER -->
-  <header>
-    <h1>ISA MISSION CONTROL</h1>
-    <p class="sub">Real-time mission operations system</p>
-  </header>
+<header class="header">
+  <h1>ISA MISSION CONTROL</h1>
+  <p class="sub">Real-time operations system</p>
+</header>
 
-  <!-- AUTH -->
-  <section class="panel">
-    <h2>Authentication</h2>
+<!-- LOGIN -->
+<section class="panel">
+  <h2>Authentication</h2>
 
-    <input id="email" type="email" placeholder="Operator email">
-    <button onclick="login()">LOGIN</button>
+  <input id="email" type="email" placeholder="Operator email">
+  <button onclick="login()">LOGIN</button>
 
-    <p id="role">ROLE: ---</p>
-  </section>
+  <p id="role">ROLE: ---</p>
+</section>
 
-  <!-- DASHBOARD -->
-  <section class="grid">
+<!-- DASHBOARD -->
+<section class="grid">
 
-    <div class="card">
-      <h3>Countdown</h3>
-      <h2 id="countdown">---</h2>
-    </div>
-
-    <div class="card">
-      <h3>Status</h3>
-      <h2 id="status">---</h2>
-    </div>
-
-  </section>
-
-  <!-- TELEMETRY -->
-  <section class="panel">
-    <h2>Telemetry</h2>
-    <div id="telemetry">---</div>
-  </section>
-
-  <!-- NEWS -->
-  <section class="panel">
-    <h2>Mission News</h2>
-
-    <div id="news" class="news-box">NO ACTIVE NEWS</div>
-
-    <img id="newsImage" class="news-image" style="display:none; max-width:100%; margin-top:10px;" />
-
-    <div id="dropZone" class="drop-zone">
-      Drag & Drop Image Here
-    </div>
-  </section>
-
-  <!-- LOGS -->
-  <section class="panel">
-    <h2>System Logs</h2>
-    <pre id="logs" class="logs"></pre>
-  </section>
-
-  <!-- DIRECTOR -->
-  <section id="directorPanel" class="panel hidden">
-
-    <h2>Director Controls</h2>
-
-    <button class="btn primary" onclick="toggleLaunch()">TOGGLE LAUNCH</button>
-    <button class="btn danger" onclick="abortLaunch()">ABORT</button>
-
-    <hr>
-
+  <div class="card">
     <h3>Countdown</h3>
+    <h2 id="countdown">---</h2>
+  </div>
 
-    <input id="years" placeholder="Years">
-    <input id="months" placeholder="Months">
-    <input id="weeks" placeholder="Weeks">
-    <input id="days" placeholder="Days">
-    <input id="hours" placeholder="Hours">
-    <input id="minutes" placeholder="Minutes">
-    <input id="seconds" placeholder="Seconds">
+  <div class="card">
+    <h3>Status</h3>
+    <h2 id="status">---</h2>
+  </div>
 
-    <button class="btn primary" onclick="setCountdown()">
-      SET COUNTDOWN
-    </button>
+</section>
 
-    <hr>
+<!-- TELEMETRY -->
+<section class="panel">
+  <h2>Telemetry</h2>
+  <div id="telemetry">---</div>
+</section>
 
-    <h3>News</h3>
+<!-- NEWS -->
+<section class="panel">
+  <h2>Mission News</h2>
 
-    <input id="newsInput" placeholder="Mission update">
-    <button class="btn primary" onclick="setNews()">
-      UPDATE NEWS
-    </button>
+  <div id="news" class="news-box">NO ACTIVE NEWS</div>
 
-  </section>
+  <img id="newsImage" class="news-image" />
 
-  <!-- VISUAL -->
-  <section class="panel">
-    <h2>Launch Visualization</h2>
-    <div class="scene">SYSTEM READY</div>
-  </section>
+  <div id="dropZone" class="drop-zone">
+    Drag & Drop Image Here
+  </div>
+</section>
 
-  <script src="app.js"></script>
+<!-- LOGS -->
+<section class="panel">
+  <h2>System Logs</h2>
+  <pre id="logs" class="logs"></pre>
+</section>
+
+<!-- DIRECTOR -->
+<section id="directorPanel" class="panel hidden">
+
+  <h2>Director Controls</h2>
+
+  <button class="btn primary" onclick="toggleLaunch()">TOGGLE LAUNCH</button>
+  <button class="btn danger" onclick="abortLaunch()">ABORT</button>
+
+  <hr>
+
+  <h3>Set Countdown</h3>
+
+  <input id="years" placeholder="Years">
+  <input id="months" placeholder="Months">
+  <input id="weeks" placeholder="Weeks">
+  <input id="days" placeholder="Days">
+  <input id="hours" placeholder="Hours">
+  <input id="minutes" placeholder="Minutes">
+  <input id="seconds" placeholder="Seconds">
+
+  <button class="btn primary" onclick="setCountdown()">
+    APPLY
+  </button>
+
+  <hr>
+
+  <h3>News</h3>
+
+  <input id="newsInput" placeholder="Mission update">
+  <button class="btn primary" onclick="setNews()">
+    UPDATE NEWS
+  </button>
+
+</section>
+
+<script src="app.js"></script>
 
 </body>
 </html>
