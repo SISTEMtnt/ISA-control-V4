@@ -10,7 +10,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
 
 /* =========================
-   USERS (DIRECTOR FIXED)
+   USERS
 ========================= */
 
 const USERS = {
@@ -38,7 +38,7 @@ let state = {
 };
 
 /* =========================
-   COUNTDOWN ENGINE
+   TIME (FIXED SAFE FORMAT)
 ========================= */
 
 function msLeft() {
@@ -46,16 +46,28 @@ function msLeft() {
 }
 
 function format(ms) {
-  let s = Math.floor(ms / 1000);
+  let totalSeconds = Math.floor(ms / 1000);
 
-  const seconds = s % 60; s = Math.floor(s / 60);
-  const minutes = s % 60; s = Math.floor(s / 60);
-  const hours = s % 24; s = Math.floor(s / 24);
-  const days = s % 30; s = Math.floor(s / 30);
-  const months = s % 12;
-  const years = Math.floor(s / 12);
+  const seconds = totalSeconds % 60;
+  totalSeconds = Math.floor(totalSeconds / 60);
 
-  return { years, months, days, hours, minutes, seconds };
+  const minutes = totalSeconds % 60;
+  totalSeconds = Math.floor(totalSeconds / 60);
+
+  const hours = totalSeconds % 24;
+  totalSeconds = Math.floor(totalSeconds / 24);
+
+  const days = totalSeconds;
+
+  return {
+    years: 0,
+    months: 0,
+    weeks: 0,
+    days,
+    hours,
+    minutes,
+    seconds
+  };
 }
 
 /* =========================
@@ -68,7 +80,7 @@ function log(msg) {
 }
 
 /* =========================
-   WS BROADCAST
+   WS
 ========================= */
 
 function broadcast() {
@@ -95,7 +107,7 @@ app.post("/login", (req, res) => {
 });
 
 /* =========================
-   LAUNCH CONTROL
+   LAUNCH
 ========================= */
 
 app.post("/toggle", (req, res) => {
@@ -155,7 +167,7 @@ app.post("/set-countdown", (req, res) => {
 });
 
 /* =========================
-   STOP COUNTDOWN
+   STOP / RESUME
 ========================= */
 
 app.post("/stop-countdown", (req, res) => {
@@ -170,10 +182,6 @@ app.post("/stop-countdown", (req, res) => {
   broadcast();
   res.json({ ok: true });
 });
-
-/* =========================
-   RESUME COUNTDOWN
-========================= */
 
 app.post("/resume-countdown", (req, res) => {
   if (!isDirector(req.body.email)) return res.sendStatus(403);
@@ -205,14 +213,42 @@ app.post("/set-news", (req, res) => {
 });
 
 /* =========================
-   IMAGE (IN NEWS)
+   DELETE NEWS (FIX ADDED)
+========================= */
+
+app.post("/clear-news", (req, res) => {
+  if (!isDirector(req.body.email)) return res.sendStatus(403);
+
+  state.news = "";
+  log("News cleared");
+
+  broadcast();
+  res.json({ ok: true });
+});
+
+/* =========================
+   IMAGE
 ========================= */
 
 app.post("/set-news-image", (req, res) => {
   if (!isDirector(req.body.email)) return res.sendStatus(403);
 
   state.newsImage = req.body.image || "";
-  log("News image updated");
+  log("Image updated");
+
+  broadcast();
+  res.json({ ok: true });
+});
+
+/* =========================
+   DELETE IMAGE (FIX ADDED)
+========================= */
+
+app.post("/clear-image", (req, res) => {
+  if (!isDirector(req.body.email)) return res.sendStatus(403);
+
+  state.newsImage = "";
+  log("Image cleared");
 
   broadcast();
   res.json({ ok: true });
