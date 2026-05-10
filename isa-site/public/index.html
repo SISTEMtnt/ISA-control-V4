@@ -12,7 +12,7 @@
 <body>
 
   <!-- HEADER -->
-  <header class="header">
+  <header>
     <h1>ISA MISSION CONTROL</h1>
     <p class="sub">Real-time mission operations system</p>
   </header>
@@ -21,15 +21,13 @@
   <section class="panel">
     <h2>Authentication</h2>
 
-    <div class="row">
-      <input id="email" type="email" placeholder="Operator email">
-      <button onclick="login()">LOGIN</button>
-    </div>
+    <input id="email" type="email" placeholder="Operator email">
+    <button onclick="login()">LOGIN</button>
 
     <p id="role">ROLE: ---</p>
   </section>
 
-  <!-- STATUS GRID -->
+  <!-- DASHBOARD -->
   <section class="grid">
 
     <div class="card">
@@ -38,7 +36,7 @@
     </div>
 
     <div class="card">
-      <h3>Mission Status</h3>
+      <h3>Status</h3>
       <h2 id="status">---</h2>
     </div>
 
@@ -47,7 +45,7 @@
   <!-- TELEMETRY -->
   <section class="panel">
     <h2>Telemetry</h2>
-    <div id="telemetry" class="telemetry-box">---</div>
+    <div id="telemetry">---</div>
   </section>
 
   <!-- NEWS -->
@@ -69,58 +67,47 @@
     <pre id="logs" class="logs"></pre>
   </section>
 
-  <!-- DIRECTOR CONTROLS -->
+  <!-- DIRECTOR -->
   <section id="directorPanel" class="panel hidden">
 
     <h2>Director Controls</h2>
 
-    <!-- Launch -->
-    <div class="row">
-      <button class="btn primary" onclick="toggleLaunch()">TOGGLE LAUNCH</button>
-      <button class="btn danger" onclick="abortLaunch()">ABORT MISSION</button>
-    </div>
+    <button class="btn primary" onclick="toggleLaunch()">TOGGLE LAUNCH</button>
+    <button class="btn danger" onclick="abortLaunch()">ABORT</button>
 
     <hr>
 
-    <!-- Countdown -->
-    <h3>Set Countdown</h3>
+    <h3>Countdown</h3>
 
-    <div class="row">
-      <input id="years" type="number" placeholder="Years">
-      <input id="months" type="number" placeholder="Months">
-      <input id="weeks" type="number" placeholder="Weeks">
-      <input id="days" type="number" placeholder="Days">
-      <input id="hours" type="number" placeholder="Hours">
-      <input id="minutes" type="number" placeholder="Minutes">
-      <input id="seconds" type="number" placeholder="Seconds">
-    </div>
+    <input id="years" placeholder="Years">
+    <input id="months" placeholder="Months">
+    <input id="weeks" placeholder="Weeks">
+    <input id="days" placeholder="Days">
+    <input id="hours" placeholder="Hours">
+    <input id="minutes" placeholder="Minutes">
+    <input id="seconds" placeholder="Seconds">
 
     <button class="btn primary" onclick="setCountdown()">
-      APPLY COUNTDOWN
+      SET COUNTDOWN
     </button>
 
     <hr>
 
-    <!-- News -->
-    <h3>Mission News</h3>
+    <h3>News</h3>
 
-    <div class="row">
-      <input id="newsInput" type="text" placeholder="Enter mission update">
-    </div>
-
+    <input id="newsInput" placeholder="Mission update">
     <button class="btn primary" onclick="setNews()">
       UPDATE NEWS
     </button>
 
   </section>
 
-  <!-- VISUAL AREA -->
+  <!-- VISUAL -->
   <section class="panel">
     <h2>Launch Visualization</h2>
-    <div id="launchScene" class="scene"></div>
+    <div class="scene">SYSTEM READY</div>
   </section>
 
-  <!-- SCRIPT -->
   <script src="app.js"></script>
 
 </body>
