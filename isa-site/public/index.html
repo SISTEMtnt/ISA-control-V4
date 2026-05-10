@@ -53,7 +53,14 @@
   <!-- NEWS -->
   <section class="panel">
     <h2>Mission News</h2>
+
     <div id="news" class="news-box">NO ACTIVE NEWS</div>
+
+    <img id="newsImage" class="news-image" style="display:none; max-width:100%; margin-top:10px;" />
+
+    <div id="dropZone" class="drop-zone">
+      Drag & Drop Image Here
+    </div>
   </section>
 
   <!-- LOGS -->
@@ -79,6 +86,8 @@
     <h3>Set Countdown</h3>
 
     <div class="row">
+      <input id="years" type="number" placeholder="Years">
+      <input id="months" type="number" placeholder="Months">
       <input id="weeks" type="number" placeholder="Weeks">
       <input id="days" type="number" placeholder="Days">
       <input id="hours" type="number" placeholder="Hours">
