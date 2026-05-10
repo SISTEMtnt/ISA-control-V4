@@ -6,7 +6,7 @@ const app = express();
 const server = http.createServer(app);
 
 /* =========================
-   WEBSOCKET SETUP
+   WEBSOCKET
 ========================= */
 const wss = new WebSocket.Server({ server });
 
@@ -23,28 +23,19 @@ const USERS = {
   "andreatnt12@hotmail.com": "director"
 };
 
-function getRole(email) {
-  return USERS[email] || "guest";
-}
-
-function isDirector(email) {
-  return getRole(email) === "director";
-}
+const getRole = (email) => USERS[email] || "guest";
+const isDirector = (email) => getRole(email) === "director";
 
 /* =========================
    STATE
 ========================= */
-const PHASE = {
-  IDLE: "IDLE",
-  COUNTDOWN: "COUNTDOWN",
-  ACTIVE: "ACTIVE",
-  ABORTED: "ABORTED"
-};
-
 const state = {
   launchEnabled: false,
-  launchTime: Date.now() + 300000,
-  phase: PHASE.IDLE,
+
+  // store absolute launch time
+  launchTime: Date.now() + 3600000, // default 1 hour
+
+  phase: "IDLE",
 
   logs: [],
 
@@ -52,7 +43,10 @@ const state = {
     altitude: 0,
     velocity: 0,
     fuel: 100
-  }
+  },
+
+  // 📰 director-controlled news
+  news: "System initialized"
 };
 
 /* =========================
@@ -63,13 +57,13 @@ const now = () => Date.now();
 const getCountdown = () =>
   Math.max(0, state.launchTime - now());
 
-function addLog(message) {
-  state.logs.unshift(`[${new Date().toISOString()}] ${message}`);
+function addLog(msg) {
+  state.logs.unshift(`[${new Date().toISOString()}] ${msg}`);
   if (state.logs.length > 20) state.logs.pop();
 }
 
 /* =========================
-   PAYLOAD (SOURCE OF TRUTH)
+   PAYLOAD
 ========================= */
 function buildPayload() {
   return {
@@ -77,7 +71,8 @@ function buildPayload() {
     phase: state.phase,
     countdown: getCountdown(),
     logs: state.logs,
-    telemetry: state.telemetry
+    telemetry: state.telemetry,
+    news: state.news
   };
 }
 
@@ -98,58 +93,42 @@ function broadcast() {
    TELEMETRY LOOP
 ========================= */
 setInterval(() => {
-  try {
-    if (state.launchEnabled && state.phase !== PHASE.ABORTED) {
-      state.telemetry.altitude += Math.random() * 4;
-      state.telemetry.velocity += Math.random() * 2;
-      state.telemetry.fuel -= Math.random() * 0.4;
+  if (state.launchEnabled) {
+    state.telemetry.altitude += Math.random() * 4;
+    state.telemetry.velocity += Math.random() * 2;
+    state.telemetry.fuel -= Math.random() * 0.4;
 
-      if (state.telemetry.fuel <= 0) {
-        state.telemetry.fuel = 0;
-        state.launchEnabled = false;
-        state.phase = PHASE.ABORTED;
-
-        addLog("FUEL DEPLETED - SYSTEM SHUTDOWN INITIATED");
-      }
+    if (state.telemetry.fuel <= 0) {
+      state.telemetry.fuel = 0;
+      state.launchEnabled = false;
+      state.phase = "ABORTED";
+      addLog("Fuel depleted");
     }
-
-    broadcast();
-  } catch (err) {
-    console.error("Telemetry error:", err);
   }
+
+  broadcast();
 }, 1000);
 
 /* =========================
-   AUTH ROUTES
+   LOGIN
 ========================= */
 app.post("/login", (req, res) => {
   const email = req.body?.email;
-
-  if (!email) {
-    return res.status(400).json({ error: "Email required" });
-  }
-
-  res.json({
-    role: getRole(email)
-  });
+  res.json({ role: getRole(email) });
 });
 
 /* =========================
-   CONTROL ROUTES
+   LAUNCH TOGGLE
 ========================= */
 app.post("/toggle", (req, res) => {
   const email = req.body?.email;
-
-  if (!email) {
-    return res.status(400).json({ error: "Email required" });
-  }
 
   if (!isDirector(email)) {
     return res.status(403).json({ error: "Unauthorized" });
   }
 
   state.launchEnabled = !state.launchEnabled;
-  state.phase = state.launchEnabled ? PHASE.COUNTDOWN : PHASE.IDLE;
+  state.phase = state.launchEnabled ? "COUNTDOWN" : "IDLE";
 
   addLog(`Launch state changed: ${state.launchEnabled}`);
 
@@ -157,24 +136,78 @@ app.post("/toggle", (req, res) => {
   res.json(buildPayload());
 });
 
+/* =========================
+   ABORT
+========================= */
 app.post("/abort", (req, res) => {
   const email = req.body?.email;
-
-  if (!email) {
-    return res.status(400).json({ error: "Email required" });
-  }
 
   if (!isDirector(email)) {
     return res.status(403).json({ error: "Unauthorized" });
   }
 
   state.launchEnabled = false;
-  state.phase = PHASE.ABORTED;
+  state.phase = "ABORTED";
 
-  addLog("Mission aborted by operator");
+  addLog("Mission aborted");
 
   broadcast();
   res.json(buildPayload());
+});
+
+/* =========================
+   ⏱ SET COUNTDOWN (NEW)
+   Supports:
+   - seconds
+   - minutes
+   - hours
+   - days
+   - weeks
+========================= */
+app.post("/set-countdown", (req, res) => {
+  const email = req.body?.email;
+  const { seconds = 0, minutes = 0, hours = 0, days = 0, weeks = 0 } = req.body;
+
+  if (!isDirector(email)) {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+
+  const totalMs =
+    seconds * 1000 +
+    minutes * 60 * 1000 +
+    hours * 60 * 60 * 1000 +
+    days * 24 * 60 * 60 * 1000 +
+    weeks * 7 * 24 * 60 * 60 * 1000;
+
+  state.launchTime = Date.now() + totalMs;
+
+  addLog(`Countdown updated`);
+
+  broadcast();
+  res.json({ launchTime: state.launchTime });
+});
+
+/* =========================
+   📰 SET NEWS (NEW)
+========================= */
+app.post("/set-news", (req, res) => {
+  const email = req.body?.email;
+  const { message } = req.body;
+
+  if (!isDirector(email)) {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+
+  if (!message) {
+    return res.status(400).json({ error: "Message required" });
+  }
+
+  state.news = message;
+
+  addLog("News updated");
+
+  broadcast();
+  res.json({ news: state.news });
 });
 
 /* =========================
@@ -188,7 +221,7 @@ wss.on("connection", (ws) => {
 });
 
 /* =========================
-   START SERVER (RENDER SAFE)
+   START SERVER
 ========================= */
 const PORT = process.env.PORT || 3000;
 
