@@ -1,230 +1,226 @@
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
+const sqlite3 = require("sqlite3").verbose();
 
 const app = express();
 const server = http.createServer(app);
-
-/* =========================
-   WEBSOCKET
-========================= */
 const wss = new WebSocket.Server({ server });
 
-/* =========================
-   MIDDLEWARE
-========================= */
 app.use(express.json());
 app.use(express.static("public"));
 
 /* =========================
-   USERS / ROLES
+   DATABASE
 ========================= */
-const USERS = {
-  "andreatnt12@hotmail.com": "director"
-};
 
-const getRole = (email) => USERS[email] || "guest";
-const isDirector = (email) => getRole(email) === "director";
+const db = new sqlite3.Database("isa.db");
 
-/* =========================
-   STATE
-========================= */
-const state = {
+db.run(`
+CREATE TABLE IF NOT EXISTS state (
+  id INTEGER PRIMARY KEY,
+  launchEnabled INTEGER,
+  launchTime INTEGER,
+  news TEXT,
+  newsImage TEXT
+)`);
+
+db.run(`INSERT OR IGNORE INTO state VALUES (1,0,0,'','')`);
+
+let state = {
   launchEnabled: false,
-
-  // store absolute launch time
-  launchTime: Date.now() + 3600000, // default 1 hour
-
-  phase: "IDLE",
-
+  launchTime: Date.now() + 3600000,
+  news: "",
+  newsImage: "",
   logs: [],
-
-  telemetry: {
-    altitude: 0,
-    velocity: 0,
-    fuel: 100
-  },
-
-  // 📰 director-controlled news
-  news: "System initialized"
+  telemetry: { altitude: 0, velocity: 0, fuel: 100 }
 };
 
 /* =========================
-   HELPERS
+   USERS
 ========================= */
-const now = () => Date.now();
 
-const getCountdown = () =>
-  Math.max(0, state.launchTime - now());
+const USERS = {
+  "director@isa.com": "director",
+  "operator@isa.com": "operator"
+};
 
-function addLog(msg) {
-  state.logs.unshift(`[${new Date().toISOString()}] ${msg}`);
-  if (state.logs.length > 20) state.logs.pop();
+function role(email) {
+  return USERS[email] || "guest";
+}
+
+function isDirector(email) {
+  return role(email) === "director";
 }
 
 /* =========================
-   PAYLOAD
+   COUNTDOWN (FIXED)
 ========================= */
-function buildPayload() {
+
+function msLeft() {
+  return Math.max(0, state.launchTime - Date.now());
+}
+
+function countdown(ms) {
+  let s = Math.floor(ms / 1000);
+
+  const sec = s % 60;
+  s = Math.floor(s / 60);
+
+  const min = s % 60;
+  s = Math.floor(s / 60);
+
+  const hr = s % 24;
+  s = Math.floor(s / 24);
+
+  const day = s % 30;
+  s = Math.floor(s / 30);
+
+  const mon = s % 12;
+  const yr = Math.floor(s / 12);
+
   return {
-    launchEnabled: state.launchEnabled,
-    phase: state.phase,
-    countdown: getCountdown(),
-    logs: state.logs,
-    telemetry: state.telemetry,
-    news: state.news
+    years: yr,
+    months: mon,
+    days: day,
+    hours: hr,
+    minutes: min,
+    seconds: sec
   };
 }
 
 /* =========================
    BROADCAST
 ========================= */
-function broadcast() {
-  const data = JSON.stringify(buildPayload());
 
-  wss.clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(data);
-    }
+function broadcast() {
+  const payload = JSON.stringify({
+    launchEnabled: state.launchEnabled,
+    countdown: countdown(msLeft()),
+    telemetry: state.telemetry,
+    logs: state.logs,
+    news: state.news,
+    newsImage: state.newsImage
+  });
+
+  wss.clients.forEach(c => {
+    if (c.readyState === 1) c.send(payload);
   });
 }
 
 /* =========================
-   TELEMETRY LOOP
+   LOG
 ========================= */
-setInterval(() => {
-  if (state.launchEnabled) {
-    state.telemetry.altitude += Math.random() * 4;
-    state.telemetry.velocity += Math.random() * 2;
-    state.telemetry.fuel -= Math.random() * 0.4;
 
-    if (state.telemetry.fuel <= 0) {
-      state.telemetry.fuel = 0;
-      state.launchEnabled = false;
-      state.phase = "ABORTED";
-      addLog("Fuel depleted");
-    }
-  }
-
-  broadcast();
-}, 1000);
+function log(msg) {
+  state.logs.unshift(`[${new Date().toISOString()}] ${msg}`);
+  if (state.logs.length > 20) state.logs.pop();
+}
 
 /* =========================
    LOGIN
 ========================= */
+
 app.post("/login", (req, res) => {
-  const email = req.body?.email;
-  res.json({ role: getRole(email) });
+  res.json({ role: role(req.body.email) });
 });
 
 /* =========================
-   LAUNCH TOGGLE
+   LAUNCH
 ========================= */
-app.post("/toggle", (req, res) => {
-  const email = req.body?.email;
 
-  if (!isDirector(email)) {
-    return res.status(403).json({ error: "Unauthorized" });
-  }
+app.post("/toggle", (req, res) => {
+  if (!isDirector(req.body.email)) return res.sendStatus(403);
 
   state.launchEnabled = !state.launchEnabled;
-  state.phase = state.launchEnabled ? "COUNTDOWN" : "IDLE";
-
-  addLog(`Launch state changed: ${state.launchEnabled}`);
+  log("Launch toggled");
 
   broadcast();
-  res.json(buildPayload());
+  res.json({ ok: true });
 });
 
-/* =========================
-   ABORT
-========================= */
 app.post("/abort", (req, res) => {
-  const email = req.body?.email;
-
-  if (!isDirector(email)) {
-    return res.status(403).json({ error: "Unauthorized" });
-  }
+  if (!isDirector(req.body.email)) return res.sendStatus(403);
 
   state.launchEnabled = false;
-  state.phase = "ABORTED";
-
-  addLog("Mission aborted");
+  log("ABORTED");
 
   broadcast();
-  res.json(buildPayload());
+  res.json({ ok: true });
 });
 
 /* =========================
-   ⏱ SET COUNTDOWN (NEW)
-   Supports:
-   - seconds
-   - minutes
-   - hours
-   - days
-   - weeks
+   COUNTDOWN SET
 ========================= */
+
 app.post("/set-countdown", (req, res) => {
-  const email = req.body?.email;
-  const { seconds = 0, minutes = 0, hours = 0, days = 0, weeks = 0 } = req.body;
+  if (!isDirector(req.body.email)) return res.sendStatus(403);
 
-  if (!isDirector(email)) {
-    return res.status(403).json({ error: "Unauthorized" });
-  }
+  const ms =
+    (req.body.years || 0) * 31536000000 +
+    (req.body.months || 0) * 2592000000 +
+    (req.body.weeks || 0) * 604800000 +
+    (req.body.days || 0) * 86400000 +
+    (req.body.hours || 0) * 3600000 +
+    (req.body.minutes || 0) * 60000 +
+    (req.body.seconds || 0) * 1000;
 
-  const totalMs =
-    seconds * 1000 +
-    minutes * 60 * 1000 +
-    hours * 60 * 60 * 1000 +
-    days * 24 * 60 * 60 * 1000 +
-    weeks * 7 * 24 * 60 * 60 * 1000;
+  state.launchTime = Date.now() + ms;
 
-  state.launchTime = Date.now() + totalMs;
-
-  addLog(`Countdown updated`);
+  log("Countdown updated");
 
   broadcast();
-  res.json({ launchTime: state.launchTime });
+  res.json({ ok: true });
 });
 
 /* =========================
-   📰 SET NEWS (NEW)
+   NEWS TEXT
 ========================= */
+
 app.post("/set-news", (req, res) => {
-  const email = req.body?.email;
-  const { message } = req.body;
-
-  if (!isDirector(email)) {
-    return res.status(403).json({ error: "Unauthorized" });
-  }
-
-  if (!message) {
-    return res.status(400).json({ error: "Message required" });
-  }
-
-  state.news = message;
-
-  addLog("News updated");
+  state.news = req.body.message || "";
+  log("News updated");
 
   broadcast();
-  res.json({ news: state.news });
+  res.json({ ok: true });
 });
 
 /* =========================
-   WEBSOCKET CONNECTION
+   IMAGE UPLOAD (FIXED)
+   WORKS FOR OPERATOR + DIRECTOR
 ========================= */
-wss.on("connection", (ws) => {
-  ws.send(JSON.stringify(buildPayload()));
 
-  addLog("Client connected");
+app.post("/upload-image", (req, res) => {
+  const userRole = role(req.body.email);
+
+  if (userRole !== "director" && userRole !== "operator") {
+    return res.sendStatus(403);
+  }
+
+  state.newsImage = req.body.image;
+  log("Image uploaded by " + userRole);
+
   broadcast();
+  res.json({ ok: true });
 });
 
 /* =========================
-   START SERVER
+   WS
 ========================= */
-const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
+wss.on("connection", ws => {
+  ws.send(JSON.stringify({
+    launchEnabled: state.launchEnabled,
+    countdown: countdown(msLeft()),
+    telemetry: state.telemetry,
+    logs: state.logs,
+    news: state.news,
+    newsImage: state.newsImage
+  }));
 });
+
+/* =========================
+   START
+========================= */
+
+server.listen(3000, () => console.log("RUNNING"));
