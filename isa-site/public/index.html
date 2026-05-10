@@ -15,7 +15,9 @@
   <p class="sub">Live operational command system</p>
 </header>
 
-<!-- AUTH -->
+<!-- =========================
+     AUTH
+========================= -->
 <section class="panel">
   <h2>Authentication</h2>
 
@@ -25,7 +27,9 @@
   <p id="role">ROLE: ---</p>
 </section>
 
-<!-- DASHBOARD -->
+<!-- =========================
+     DASHBOARD
+========================= -->
 <section class="grid">
 
   <div class="card">
@@ -36,18 +40,20 @@
 
   <div class="card">
     <h3>Status</h3>
-    <h2 id="status">---</h2>
+    <h2 id="status">STANDBY</h2>
   </div>
 
 </section>
 
-<!-- NEWS -->
+<!-- =========================
+     NEWS
+========================= -->
 <section class="panel">
   <h2>Mission News</h2>
 
   <div id="news" class="news-box">NO ACTIVE NEWS</div>
 
-  <img id="newsImage" class="news-image" style="display:none"/>
+  <img id="newsImage" class="news-image" style="display:none; max-width:100%; border-radius:8px;" />
 
   <hr>
 
@@ -55,8 +61,10 @@
 
   <input id="newsInput" placeholder="Enter mission update">
 
-  <button class="btn primary" onclick="setNews()">UPDATE NEWS</button>
-  <button class="btn danger" onclick="clearNews()">DELETE NEWS</button>
+  <div class="row">
+    <button class="btn primary" onclick="setNews()">UPDATE NEWS</button>
+    <button class="btn danger" onclick="clearNews()">DELETE NEWS</button>
+  </div>
 
   <hr>
 
@@ -64,23 +72,31 @@
 
   <input type="file" id="imageInput">
 
-  <button class="btn primary" onclick="uploadImage()">UPLOAD IMAGE</button>
-  <button class="btn danger" onclick="clearImage()">DELETE IMAGE</button>
+  <div class="row">
+    <button class="btn primary" onclick="uploadImage()">UPLOAD IMAGE</button>
+    <button class="btn danger" onclick="clearImage()">DELETE IMAGE</button>
+  </div>
 </section>
 
-<!-- LOGS -->
+<!-- =========================
+     LOGS
+========================= -->
 <section class="panel">
   <h2>System Logs</h2>
   <pre id="logs" class="logs"></pre>
 </section>
 
-<!-- DIRECTOR PANEL -->
+<!-- =========================
+     DIRECTOR PANEL
+========================= -->
 <section id="directorPanel" class="panel hidden">
 
   <h2>Director Controls</h2>
 
-  <button class="btn primary" onclick="toggleLaunch()">TOGGLE LAUNCH</button>
-  <button class="btn danger" onclick="abortMission()">ABORT MISSION</button>
+  <div class="row">
+    <button class="btn primary" onclick="toggleLaunch()">TOGGLE LAUNCH</button>
+    <button class="btn danger" onclick="abortMission()">ABORT MISSION</button>
+  </div>
 
   <hr>
 
@@ -96,10 +112,11 @@
     <input id="seconds" placeholder="Seconds">
   </div>
 
-  <button class="btn primary" onclick="setCountdown()">SET COUNTDOWN</button>
-
-  <button class="btn danger" onclick="stopCountdown()">STOP COUNTDOWN</button>
-  <button class="btn primary" onclick="resumeCountdown()">RESUME COUNTDOWN</button>
+  <div class="row">
+    <button class="btn primary" onclick="setCountdown()">SET COUNTDOWN</button>
+    <button class="btn danger" onclick="stopCountdown()">STOP</button>
+    <button class="btn primary" onclick="resumeCountdown()">RESUME</button>
+  </div>
 
 </section>
 
