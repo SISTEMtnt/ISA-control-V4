@@ -14,7 +14,7 @@ app.use(express.static("public"));
 ========================= */
 
 const USERS = {
-  "director@isa.com": "director",
+  "andreatnt12@hotmail.com": "director",
   "operator@isa.com": "operator"
 };
 
