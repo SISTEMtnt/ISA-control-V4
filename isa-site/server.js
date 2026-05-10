@@ -7,29 +7,29 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
 
 /* =========================
-   DATABASE
+   DB
 ========================= */
 
 const db = new sqlite3.Database("isa.db");
 
 db.run(`
-CREATE TABLE IF NOT EXISTS state (
+CREATE TABLE IF NOT EXISTS mission (
   id INTEGER PRIMARY KEY,
-  launchEnabled INTEGER,
   launchTime INTEGER,
+  launchEnabled INTEGER,
   news TEXT,
   newsImage TEXT
 )`);
 
-db.run(`INSERT OR IGNORE INTO state VALUES (1,0,0,'','')`);
+db.run(`INSERT OR IGNORE INTO mission VALUES (1,0,0,'','')`);
 
 let state = {
-  launchEnabled: false,
   launchTime: Date.now() + 3600000,
+  launchEnabled: false,
   news: "",
   newsImage: "",
   logs: [],
@@ -45,48 +45,37 @@ const USERS = {
   "operator@isa.com": "operator"
 };
 
-function role(email) {
-  return USERS[email] || "guest";
-}
-
-function isDirector(email) {
-  return role(email) === "director";
-}
+const role = (email) => USERS[email] || "guest";
+const isDirector = (email) => role(email) === "director";
 
 /* =========================
-   COUNTDOWN (FIXED)
+   TIME SYSTEM
 ========================= */
 
 function msLeft() {
   return Math.max(0, state.launchTime - Date.now());
 }
 
-function countdown(ms) {
+function formatCountdown(ms) {
   let s = Math.floor(ms / 1000);
 
-  const sec = s % 60;
-  s = Math.floor(s / 60);
+  const seconds = s % 60; s = Math.floor(s / 60);
+  const minutes = s % 60; s = Math.floor(s / 60);
+  const hours = s % 24; s = Math.floor(s / 24);
+  const days = s % 30; s = Math.floor(s / 30);
+  const months = s % 12;
+  const years = Math.floor(s / 12);
 
-  const min = s % 60;
-  s = Math.floor(s / 60);
+  return { years, months, days, hours, minutes, seconds };
+}
 
-  const hr = s % 24;
-  s = Math.floor(s / 24);
+/* =========================
+   LOGS
+========================= */
 
-  const day = s % 30;
-  s = Math.floor(s / 30);
-
-  const mon = s % 12;
-  const yr = Math.floor(s / 12);
-
-  return {
-    years: yr,
-    months: mon,
-    days: day,
-    hours: hr,
-    minutes: min,
-    seconds: sec
-  };
+function log(msg) {
+  state.logs.unshift(`[${new Date().toISOString()}] ${msg}`);
+  if (state.logs.length > 25) state.logs.pop();
 }
 
 /* =========================
@@ -96,7 +85,7 @@ function countdown(ms) {
 function broadcast() {
   const payload = JSON.stringify({
     launchEnabled: state.launchEnabled,
-    countdown: countdown(msLeft()),
+    countdown: formatCountdown(msLeft()),
     telemetry: state.telemetry,
     logs: state.logs,
     news: state.news,
@@ -109,25 +98,26 @@ function broadcast() {
 }
 
 /* =========================
-   LOG
+   TELEMETRY LOOP
 ========================= */
 
-function log(msg) {
-  state.logs.unshift(`[${new Date().toISOString()}] ${msg}`);
-  if (state.logs.length > 20) state.logs.pop();
-}
+setInterval(() => {
+  if (state.launchEnabled) {
+    state.telemetry.altitude += Math.random() * 3;
+    state.telemetry.velocity += Math.random() * 1.2;
+    state.telemetry.fuel = Math.max(0, state.telemetry.fuel - 0.2);
+  }
+
+  broadcast();
+}, 1000);
 
 /* =========================
-   LOGIN
+   API
 ========================= */
 
 app.post("/login", (req, res) => {
   res.json({ role: role(req.body.email) });
 });
-
-/* =========================
-   LAUNCH
-========================= */
 
 app.post("/toggle", (req, res) => {
   if (!isDirector(req.body.email)) return res.sendStatus(403);
@@ -143,16 +133,13 @@ app.post("/abort", (req, res) => {
   if (!isDirector(req.body.email)) return res.sendStatus(403);
 
   state.launchEnabled = false;
-  log("ABORTED");
+  log("MISSION ABORTED");
 
   broadcast();
   res.json({ ok: true });
 });
 
-/* =========================
-   COUNTDOWN SET
-========================= */
-
+/* countdown set (ALL UNITS) */
 app.post("/set-countdown", (req, res) => {
   if (!isDirector(req.body.email)) return res.sendStatus(403);
 
@@ -168,15 +155,12 @@ app.post("/set-countdown", (req, res) => {
   state.launchTime = Date.now() + ms;
 
   log("Countdown updated");
-
   broadcast();
+
   res.json({ ok: true });
 });
 
-/* =========================
-   NEWS TEXT
-========================= */
-
+/* news */
 app.post("/set-news", (req, res) => {
   state.news = req.body.message || "";
   log("News updated");
@@ -185,22 +169,18 @@ app.post("/set-news", (req, res) => {
   res.json({ ok: true });
 });
 
-/* =========================
-   IMAGE UPLOAD (FIXED)
-   WORKS FOR OPERATOR + DIRECTOR
-========================= */
-
+/* image upload (BOTH operator + director) */
 app.post("/upload-image", (req, res) => {
-  const userRole = role(req.body.email);
+  const r = role(req.body.email);
 
-  if (userRole !== "director" && userRole !== "operator") {
+  if (r !== "director" && r !== "operator")
     return res.sendStatus(403);
-  }
 
   state.newsImage = req.body.image;
-  log("Image uploaded by " + userRole);
 
+  log(`Image uploaded by ${r}`);
   broadcast();
+
   res.json({ ok: true });
 });
 
@@ -211,7 +191,7 @@ app.post("/upload-image", (req, res) => {
 wss.on("connection", ws => {
   ws.send(JSON.stringify({
     launchEnabled: state.launchEnabled,
-    countdown: countdown(msLeft()),
+    countdown: formatCountdown(msLeft()),
     telemetry: state.telemetry,
     logs: state.logs,
     news: state.news,
@@ -223,4 +203,6 @@ wss.on("connection", ws => {
    START
 ========================= */
 
-server.listen(3000, () => console.log("RUNNING"));
+server.listen(3000, () => {
+  console.log("ISA SYSTEM ONLINE");
+});
