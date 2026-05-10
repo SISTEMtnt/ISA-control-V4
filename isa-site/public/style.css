@@ -10,7 +10,12 @@ body {
 h1 {
     color: #00f0ff;
     text-shadow: 0 0 10px #00f0ff;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
+}
+
+.sub {
+    opacity: 0.6;
+    margin-bottom: 20px;
 }
 
 /* PANELS */
@@ -30,6 +35,7 @@ input {
     border: 1px solid #00e5ff;
     color: #00e5ff;
     outline: none;
+    margin: 3px;
 }
 
 /* BUTTONS */
@@ -49,7 +55,7 @@ button:hover {
     box-shadow: 0 0 10px #00e5ff;
 }
 
-/* IMPORTANT BUTTONS */
+/* PRIMARY / DANGER */
 .btn.danger {
     border-color: #ff004c;
     color: #ff004c;
@@ -102,12 +108,49 @@ button:hover {
     border: 1px solid rgba(0, 229, 255, 0.2);
 }
 
+/* NEWS */
+.news-box {
+    padding: 10px;
+    background: rgba(0, 20, 30, 0.5);
+    border-left: 3px solid #00ff9d;
+    margin-top: 10px;
+}
+
+/* IMAGE */
+.news-image {
+    border-radius: 8px;
+    border: 1px solid rgba(0, 229, 255, 0.3);
+}
+
+/* DRAG DROP */
+.drop-zone {
+    margin-top: 10px;
+    padding: 20px;
+    border: 2px dashed #00e5ff;
+    text-align: center;
+    color: #00e5ff;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.drop-zone:hover {
+    border-color: #00ff9d;
+    color: #00ff9d;
+}
+
+/* GRID IMPROVEMENT */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
 /* HIDDEN */
 .hidden {
     display: none;
 }
 
-/* SCENE AREA */
+/* SCENE */
 .scene {
     height: 200px;
     border: 1px dashed rgba(0, 229, 255, 0.3);
