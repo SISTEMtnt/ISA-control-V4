@@ -10,21 +10,15 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
 
 /* =========================
-   USERS (simple auth)
+   USERS (DIRECTOR FIXED)
 ========================= */
 
 const USERS = {
-  "andreatnt12@hotmail.com": "director",
-  "operator@isa.com": "operator"
+  "andreatnt12@hotmail.com": "director"
 };
 
-function getRole(email) {
-  return USERS[email] || "guest";
-}
-
-function isDirector(email) {
-  return getRole(email) === "director";
-}
+const getRole = (email) => USERS[email] || "guest";
+const isDirector = (email) => getRole(email) === "director";
 
 /* =========================
    STATE
@@ -32,26 +26,26 @@ function isDirector(email) {
 
 let state = {
   launchEnabled: false,
-  launchTime: Date.now() + 3600000, // default 1h
+
+  countdownActive: true,
+  launchTime: Date.now() + 3600000,
+  pausedRemaining: null,
+
   news: "",
   newsImage: "",
-  logs: [],
-  telemetry: {
-    altitude: 0,
-    velocity: 0,
-    fuel: 100
-  }
+
+  logs: []
 };
 
 /* =========================
-   TIME ENGINE
+   COUNTDOWN ENGINE
 ========================= */
 
 function msLeft() {
   return Math.max(0, state.launchTime - Date.now());
 }
 
-function formatCountdown(ms) {
+function format(ms) {
   let s = Math.floor(ms / 1000);
 
   const seconds = s % 60; s = Math.floor(s / 60);
@@ -74,17 +68,17 @@ function log(msg) {
 }
 
 /* =========================
-   BROADCAST
+   WS BROADCAST
 ========================= */
 
 function broadcast() {
   const payload = JSON.stringify({
     launchEnabled: state.launchEnabled,
-    countdown: formatCountdown(msLeft()),
-    telemetry: state.telemetry,
-    logs: state.logs,
+    countdownActive: state.countdownActive,
+    countdown: state.countdownActive ? format(msLeft()) : null,
     news: state.news,
-    newsImage: state.newsImage
+    newsImage: state.newsImage,
+    logs: state.logs
   });
 
   wss.clients.forEach(c => {
@@ -93,30 +87,15 @@ function broadcast() {
 }
 
 /* =========================
-   TELEMETRY LOOP
-========================= */
-
-setInterval(() => {
-  if (state.launchEnabled) {
-    state.telemetry.altitude += Math.random() * 3;
-    state.telemetry.velocity += Math.random() * 1.2;
-    state.telemetry.fuel = Math.max(0, state.telemetry.fuel - 0.15);
-  }
-
-  broadcast();
-}, 1000);
-
-/* =========================
    AUTH
 ========================= */
 
 app.post("/login", (req, res) => {
-  const email = req.body.email || "";
-  res.json({ role: getRole(email) });
+  res.json({ role: getRole(req.body.email) });
 });
 
 /* =========================
-   CONTROL
+   LAUNCH CONTROL
 ========================= */
 
 app.post("/toggle", (req, res) => {
@@ -140,7 +119,7 @@ app.post("/abort", (req, res) => {
 });
 
 /* =========================
-   COUNTDOWN
+   COUNTDOWN SET
 ========================= */
 
 app.post("/set-countdown", (req, res) => {
@@ -166,10 +145,48 @@ app.post("/set-countdown", (req, res) => {
     seconds * 1000;
 
   state.launchTime = Date.now() + ms;
+  state.countdownActive = true;
+  state.pausedRemaining = null;
 
-  log("Countdown updated");
+  log("Countdown set");
+
   broadcast();
+  res.json({ ok: true });
+});
 
+/* =========================
+   STOP COUNTDOWN
+========================= */
+
+app.post("/stop-countdown", (req, res) => {
+  if (!isDirector(req.body.email)) return res.sendStatus(403);
+
+  if (state.countdownActive) {
+    state.pausedRemaining = state.launchTime - Date.now();
+    state.countdownActive = false;
+    log("Countdown stopped");
+  }
+
+  broadcast();
+  res.json({ ok: true });
+});
+
+/* =========================
+   RESUME COUNTDOWN
+========================= */
+
+app.post("/resume-countdown", (req, res) => {
+  if (!isDirector(req.body.email)) return res.sendStatus(403);
+
+  if (!state.countdownActive && state.pausedRemaining != null) {
+    state.launchTime = Date.now() + state.pausedRemaining;
+    state.countdownActive = true;
+    state.pausedRemaining = null;
+
+    log("Countdown resumed");
+  }
+
+  broadcast();
   res.json({ ok: true });
 });
 
@@ -188,31 +205,31 @@ app.post("/set-news", (req, res) => {
 });
 
 /* =========================
-   IMAGE (director only)
+   IMAGE (IN NEWS)
 ========================= */
 
-app.post("/upload-image", (req, res) => {
+app.post("/set-news-image", (req, res) => {
   if (!isDirector(req.body.email)) return res.sendStatus(403);
 
   state.newsImage = req.body.image || "";
-  log("Image uploaded");
+  log("News image updated");
 
   broadcast();
   res.json({ ok: true });
 });
 
 /* =========================
-   WS
+   WS INIT
 ========================= */
 
 wss.on("connection", ws => {
   ws.send(JSON.stringify({
     launchEnabled: state.launchEnabled,
-    countdown: formatCountdown(msLeft()),
-    telemetry: state.telemetry,
-    logs: state.logs,
+    countdownActive: state.countdownActive,
+    countdown: state.countdownActive ? format(msLeft()) : null,
     news: state.news,
-    newsImage: state.newsImage
+    newsImage: state.newsImage,
+    logs: state.logs
   }));
 });
 
@@ -221,5 +238,5 @@ wss.on("connection", ws => {
 ========================= */
 
 server.listen(3000, () => {
-  console.log("ISA SYSTEM ONLINE - PORT 3000");
+  console.log("ISA SYSTEM ONLINE");
 });
