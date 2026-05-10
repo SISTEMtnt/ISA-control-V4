@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ISA CONTROL V3</title>
+
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -12,10 +13,10 @@
 
 <header class="header">
   <h1>ISA MISSION CONTROL</h1>
-  <p class="sub">Real-time operations system</p>
+  <p class="sub">Live operational command system</p>
 </header>
 
-<!-- LOGIN -->
+<!-- AUTH -->
 <section class="panel">
   <h2>Authentication</h2>
 
@@ -25,7 +26,7 @@
   <p id="role">ROLE: ---</p>
 </section>
 
-<!-- DASHBOARD -->
+<!-- MAIN GRID -->
 <section class="grid">
 
   <div class="card">
@@ -54,9 +55,12 @@
 
   <img id="newsImage" class="news-image" />
 
-  <div id="dropZone" class="drop-zone">
-    Drag & Drop Image Here
-  </div>
+  <!-- OPERATOR + DIRECTOR UPLOAD -->
+  <h3>Upload Mission Image</h3>
+
+  <input type="file" id="imageInput">
+  <button onclick="uploadImage()">UPLOAD IMAGE</button>
+
 </section>
 
 <!-- LOGS -->
@@ -65,41 +69,44 @@
   <pre id="logs" class="logs"></pre>
 </section>
 
-<!-- DIRECTOR -->
+<!-- DIRECTOR PANEL -->
 <section id="directorPanel" class="panel hidden">
 
   <h2>Director Controls</h2>
 
   <button class="btn primary" onclick="toggleLaunch()">TOGGLE LAUNCH</button>
-  <button class="btn danger" onclick="abortLaunch()">ABORT</button>
+  <button class="btn danger" onclick="abortLaunch()">ABORT MISSION</button>
 
   <hr>
 
   <h3>Set Countdown</h3>
 
-  <input id="years" placeholder="Years">
-  <input id="months" placeholder="Months">
-  <input id="weeks" placeholder="Weeks">
-  <input id="days" placeholder="Days">
-  <input id="hours" placeholder="Hours">
-  <input id="minutes" placeholder="Minutes">
-  <input id="seconds" placeholder="Seconds">
+  <div class="row">
+    <input id="years" placeholder="Years">
+    <input id="months" placeholder="Months">
+    <input id="weeks" placeholder="Weeks">
+    <input id="days" placeholder="Days">
+    <input id="hours" placeholder="Hours">
+    <input id="minutes" placeholder="Minutes">
+    <input id="seconds" placeholder="Seconds">
+  </div>
 
   <button class="btn primary" onclick="setCountdown()">
-    APPLY
+    APPLY COUNTDOWN
   </button>
 
   <hr>
 
-  <h3>News</h3>
+  <h3>Mission News</h3>
 
-  <input id="newsInput" placeholder="Mission update">
+  <input id="newsInput" placeholder="Enter mission update">
   <button class="btn primary" onclick="setNews()">
     UPDATE NEWS
   </button>
 
 </section>
 
+<!-- SCRIPT -->
 <script src="app.js"></script>
 
 </body>
