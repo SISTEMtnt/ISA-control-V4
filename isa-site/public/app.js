@@ -26,21 +26,33 @@ function connectWS() {
     }
   };
 
-  ws.onclose = () => setTimeout(connectWS, 2000);
+  ws.onclose = () => {
+    setTimeout(connectWS, 1500);
+  };
 }
 
 connectWS();
 
 /* =========================
-   UI UPDATE
+   SAFE DOM HELPERS
+========================= */
+
+function el(id) {
+  return document.getElementById(id);
+}
+
+/* =========================
+   UI UPDATE (FIXED + SAFE)
 ========================= */
 
 function updateUI(data) {
 
-  /* countdown */
-  const countdownEl = document.getElementById("countdown");
+  /* COUNTDOWN */
+  const countdownEl = el("countdown");
 
-  if (data.countdown) {
+  if (!countdownEl) return;
+
+  if (data.countdown && data.countdownActive !== false) {
     const c = data.countdown;
 
     countdownEl.innerText =
@@ -50,28 +62,35 @@ function updateUI(data) {
     countdownEl.innerText = "PAUSED";
   }
 
-  /* status */
-  document.getElementById("status").innerText =
-    data.launchEnabled ? "ACTIVE" : "STANDBY";
+  /* STATUS */
+  const statusEl = el("status");
+  if (statusEl) {
+    statusEl.innerText = data.launchEnabled ? "ACTIVE" : "STANDBY";
+  }
 
-  /* logs */
-  const logsEl = document.getElementById("logs");
-  if (data.logs) {
+  /* LOGS */
+  const logsEl = el("logs");
+  if (logsEl && data.logs) {
     logsEl.innerText = data.logs.join("\n");
   }
 
-  /* news */
-  document.getElementById("news").innerText =
-    data.news || "NO ACTIVE NEWS";
+  /* NEWS */
+  const newsEl = el("news");
+  if (newsEl) {
+    newsEl.innerText = data.news || "NO ACTIVE NEWS";
+  }
 
-  /* image (inside news) */
-  const img = document.getElementById("newsImage");
+  /* IMAGE */
+  const img = el("newsImage");
 
-  if (data.newsImage) {
-    img.src = data.newsImage;
-    img.style.display = "block";
-  } else {
-    img.style.display = "none";
+  if (img) {
+    if (data.newsImage && data.newsImage.length > 10) {
+      img.src = data.newsImage;
+      img.style.display = "block";
+    } else {
+      img.src = "";
+      img.style.display = "none";
+    }
   }
 }
 
@@ -80,7 +99,7 @@ function updateUI(data) {
 ========================= */
 
 async function login() {
-  email = document.getElementById("email").value.trim();
+  email = el("email")?.value?.trim();
 
   if (!email) return alert("Enter email");
 
@@ -93,12 +112,13 @@ async function login() {
   const data = await res.json();
   role = data.role;
 
-  document.getElementById("role").innerText = "ROLE: " + role;
+  const roleEl = el("role");
+  if (roleEl) roleEl.innerText = "ROLE: " + role;
 
-  document.getElementById("directorPanel").classList.toggle(
-    "hidden",
-    role !== "director"
-  );
+  const panel = el("directorPanel");
+  if (panel) {
+    panel.classList.toggle("hidden", role !== "director");
+  }
 }
 
 /* =========================
@@ -110,7 +130,7 @@ function isDirector() {
 }
 
 /* =========================
-   CONTROL ACTIONS
+   ACTIONS
 ========================= */
 
 function toggleLaunch() {
@@ -134,13 +154,13 @@ function abortMission() {
 }
 
 /* =========================
-   COUNTDOWN
+   COUNTDOWN SET
 ========================= */
 
 function setCountdown() {
   if (!isDirector()) return alert("Access denied");
 
-  const get = id => Number(document.getElementById(id)?.value) || 0;
+  const get = (id) => Number(el(id)?.value) || 0;
 
   fetch(`${API}/set-countdown`, {
     method: "POST",
@@ -194,19 +214,19 @@ function setNews() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       email,
-      message: document.getElementById("newsInput").value
+      message: el("newsInput")?.value || ""
     })
   });
 }
 
 /* =========================
-   IMAGE UPLOAD (NEWS)
+   IMAGE UPLOAD
 ========================= */
 
 function uploadImage() {
   if (!isDirector()) return alert("Access denied");
 
-  const file = document.getElementById("imageInput").files[0];
+  const file = el("imageInput")?.files?.[0];
   if (!file) return alert("Select image");
 
   const reader = new FileReader();
