@@ -29,46 +29,12 @@ let state = {
 
   countdownActive: true,
   launchTime: Date.now() + 3600000,
-  pausedRemaining: null,
 
   news: "",
   newsImage: "",
 
   logs: []
 };
-
-/* =========================
-   TIME (FIXED SAFE FORMAT)
-========================= */
-
-function msLeft() {
-  return Math.max(0, state.launchTime - Date.now());
-}
-
-function format(ms) {
-  let totalSeconds = Math.floor(ms / 1000);
-
-  const seconds = totalSeconds % 60;
-  totalSeconds = Math.floor(totalSeconds / 60);
-
-  const minutes = totalSeconds % 60;
-  totalSeconds = Math.floor(totalSeconds / 60);
-
-  const hours = totalSeconds % 24;
-  totalSeconds = Math.floor(totalSeconds / 24);
-
-  const days = totalSeconds;
-
-  return {
-    years: 0,
-    months: 0,
-    weeks: 0,
-    days,
-    hours,
-    minutes,
-    seconds
-  };
-}
 
 /* =========================
    LOGS
@@ -87,7 +53,7 @@ function broadcast() {
   const payload = JSON.stringify({
     launchEnabled: state.launchEnabled,
     countdownActive: state.countdownActive,
-    countdown: state.countdownActive ? format(msLeft()) : null,
+    launchTime: state.launchTime,
     news: state.news,
     newsImage: state.newsImage,
     logs: state.logs
@@ -131,7 +97,7 @@ app.post("/abort", (req, res) => {
 });
 
 /* =========================
-   COUNTDOWN SET
+   COUNTDOWN
 ========================= */
 
 app.post("/set-countdown", (req, res) => {
@@ -158,26 +124,18 @@ app.post("/set-countdown", (req, res) => {
 
   state.launchTime = Date.now() + ms;
   state.countdownActive = true;
-  state.pausedRemaining = null;
 
   log("Countdown set");
-
   broadcast();
+
   res.json({ ok: true });
 });
-
-/* =========================
-   STOP / RESUME
-========================= */
 
 app.post("/stop-countdown", (req, res) => {
   if (!isDirector(req.body.email)) return res.sendStatus(403);
 
-  if (state.countdownActive) {
-    state.pausedRemaining = state.launchTime - Date.now();
-    state.countdownActive = false;
-    log("Countdown stopped");
-  }
+  state.countdownActive = false;
+  log("Countdown stopped");
 
   broadcast();
   res.json({ ok: true });
@@ -186,13 +144,8 @@ app.post("/stop-countdown", (req, res) => {
 app.post("/resume-countdown", (req, res) => {
   if (!isDirector(req.body.email)) return res.sendStatus(403);
 
-  if (!state.countdownActive && state.pausedRemaining != null) {
-    state.launchTime = Date.now() + state.pausedRemaining;
-    state.countdownActive = true;
-    state.pausedRemaining = null;
-
-    log("Countdown resumed");
-  }
+  state.countdownActive = true;
+  log("Countdown resumed");
 
   broadcast();
   res.json({ ok: true });
@@ -211,10 +164,6 @@ app.post("/set-news", (req, res) => {
   broadcast();
   res.json({ ok: true });
 });
-
-/* =========================
-   DELETE NEWS (FIX ADDED)
-========================= */
 
 app.post("/clear-news", (req, res) => {
   if (!isDirector(req.body.email)) return res.sendStatus(403);
@@ -240,10 +189,6 @@ app.post("/set-news-image", (req, res) => {
   res.json({ ok: true });
 });
 
-/* =========================
-   DELETE IMAGE (FIX ADDED)
-========================= */
-
 app.post("/clear-image", (req, res) => {
   if (!isDirector(req.body.email)) return res.sendStatus(403);
 
@@ -262,7 +207,7 @@ wss.on("connection", ws => {
   ws.send(JSON.stringify({
     launchEnabled: state.launchEnabled,
     countdownActive: state.countdownActive,
-    countdown: state.countdownActive ? format(msLeft()) : null,
+    launchTime: state.launchTime,
     news: state.news,
     newsImage: state.newsImage,
     logs: state.logs
