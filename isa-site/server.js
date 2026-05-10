@@ -33,6 +33,15 @@ let state = {
   news: "",
   newsImage: "",
 
+  statusText: "STANDBY",
+
+  missionInfo: {
+    rocket: "ISA-1",
+    payload: "",
+    destination: "",
+    agency: ""
+  },
+
   logs: []
 };
 
@@ -46,6 +55,14 @@ function log(msg) {
 }
 
 /* =========================
+   COUNTDOWN (SERVER ONLY TIME SOURCE)
+========================= */
+
+function msLeft() {
+  return Math.max(0, state.launchTime - Date.now());
+}
+
+/* =========================
    WS
 ========================= */
 
@@ -54,8 +71,13 @@ function broadcast() {
     launchEnabled: state.launchEnabled,
     countdownActive: state.countdownActive,
     launchTime: state.launchTime,
+
     news: state.news,
     newsImage: state.newsImage,
+
+    statusText: state.statusText,
+    missionInfo: state.missionInfo,
+
     logs: state.logs
   });
 
@@ -73,7 +95,7 @@ app.post("/login", (req, res) => {
 });
 
 /* =========================
-   LAUNCH
+   LAUNCH CONTROL
 ========================= */
 
 app.post("/toggle", (req, res) => {
@@ -200,6 +222,40 @@ app.post("/clear-image", (req, res) => {
 });
 
 /* =========================
+   STATUS TEXT
+========================= */
+
+app.post("/set-status-text", (req, res) => {
+  if (!isDirector(req.body.email)) return res.sendStatus(403);
+
+  state.statusText = req.body.text || "STANDBY";
+  log("Status updated");
+
+  broadcast();
+  res.json({ ok: true });
+});
+
+/* =========================
+   MISSION INFO
+========================= */
+
+app.post("/set-mission-info", (req, res) => {
+  if (!isDirector(req.body.email)) return res.sendStatus(403);
+
+  state.missionInfo = {
+    rocket: req.body.rocket || "",
+    payload: req.body.payload || "",
+    destination: req.body.destination || "",
+    agency: req.body.agency || ""
+  };
+
+  log("Mission info updated");
+  broadcast();
+
+  res.json({ ok: true });
+});
+
+/* =========================
    WS INIT
 ========================= */
 
@@ -210,6 +266,8 @@ wss.on("connection", ws => {
     launchTime: state.launchTime,
     news: state.news,
     newsImage: state.newsImage,
+    statusText: state.statusText,
+    missionInfo: state.missionInfo,
     logs: state.logs
   }));
 });
