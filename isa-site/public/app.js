@@ -3,11 +3,12 @@ let role = "guest";
 
 const API = window.location.origin;
 
-let ws;
-
 /* =========================
    WS
 ========================= */
+
+let launchTime = null;
+let countdownActive = true;
 
 function connectWS() {
   const WS_URL =
@@ -15,7 +16,7 @@ function connectWS() {
       ? `wss://${location.host}`
       : `ws://${location.host}`;
 
-  ws = new WebSocket(WS_URL);
+  const ws = new WebSocket(WS_URL);
 
   ws.onmessage = (msg) => {
     const data = JSON.parse(msg.data);
@@ -28,16 +29,46 @@ function connectWS() {
 connectWS();
 
 /* =========================
-   UI
+   SMOOTH COUNTDOWN LOOP
+========================= */
+
+setInterval(() => {
+  if (!launchTime || !countdownActive) return;
+
+  const diff = launchTime - Date.now();
+
+  const el = document.getElementById("countdown");
+  const stateEl = document.getElementById("countdownState");
+
+  if (diff <= 0) {
+    el.innerText = "LAUNCHED";
+    stateEl.innerText = "DONE";
+    return;
+  }
+
+  let s = Math.floor(diff / 1000);
+
+  const seconds = s % 60; s = Math.floor(s / 60);
+  const minutes = s % 60; s = Math.floor(s / 60);
+  const hours = s % 24; s = Math.floor(s / 24);
+  const days = s;
+
+  el.innerText = `${days}D ${hours}H ${minutes}M ${seconds}S`;
+  stateEl.innerText = "RUNNING";
+
+}, 1000);
+
+/* =========================
+   UI UPDATE
 ========================= */
 
 function updateUI(data) {
-  const c = document.getElementById("countdown");
-  if (data.countdown) {
-    c.innerText =
-      `${data.countdown.days}D ${data.countdown.hours}H ${data.countdown.minutes}M ${data.countdown.seconds}S`;
-  } else {
-    c.innerText = "PAUSED";
+
+  launchTime = data.launchTime;
+  countdownActive = data.countdownActive;
+
+  if (!countdownActive) {
+    document.getElementById("countdownState").innerText = "PAUSED";
   }
 
   document.getElementById("status").innerText =
@@ -82,115 +113,54 @@ async function login() {
   );
 }
 
-const isDirector = () => role === "director";
-
 /* =========================
    ACTIONS
 ========================= */
 
-function toggleLaunch() {
-  fetch(`${API}/toggle`, {
+function send(path, body = {}) {
+  fetch(`${API}/${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email })
+    body: JSON.stringify({ email, ...body })
   });
 }
 
-function abortMission() {
-  fetch(`${API}/abort`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email })
-  });
-}
+/* launch */
+const toggleLaunch = () => send("toggle");
+const abortMission = () => send("abort");
 
-/* =========================
-   COUNTDOWN
-========================= */
+/* countdown */
+const setCountdown = () => send("set-countdown", {
+  years: +years.value || 0,
+  months: +months.value || 0,
+  weeks: +weeks.value || 0,
+  days: +days.value || 0,
+  hours: +hours.value || 0,
+  minutes: +minutes.value || 0,
+  seconds: +seconds.value || 0
+});
 
-function setCountdown() {
-  const get = (id) => Number(document.getElementById(id).value) || 0;
+const stopCountdown = () => send("stop-countdown");
+const resumeCountdown = () => send("resume-countdown");
 
-  fetch(`${API}/set-countdown`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email,
-      years: get("years"),
-      months: get("months"),
-      weeks: get("weeks"),
-      days: get("days"),
-      hours: get("hours"),
-      minutes: get("minutes"),
-      seconds: get("seconds")
-    })
-  });
-}
+/* news */
+const setNews = () => send("set-news", {
+  message: newsInput.value
+});
 
-function stopCountdown() {
-  fetch(`${API}/stop-countdown`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email })
-  });
-}
+const clearNews = () => send("clear-news");
 
-function resumeCountdown() {
-  fetch(`${API}/resume-countdown`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email })
-  });
-}
-
-/* =========================
-   NEWS
-========================= */
-
-function setNews() {
-  fetch(`${API}/set-news`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email,
-      message: document.getElementById("newsInput").value
-    })
-  });
-}
-
-function clearNews() {
-  fetch(`${API}/clear-news`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email })
-  });
-}
-
-/* =========================
-   IMAGE
-========================= */
-
+/* image */
 function uploadImage() {
-  const file = document.getElementById("imageInput").files[0];
+  const file = imageInput.files[0];
   if (!file) return;
 
   const reader = new FileReader();
-
   reader.onload = () => {
-    fetch(`${API}/set-news-image`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, image: reader.result })
-    });
+    send("set-news-image", { image: reader.result });
   };
 
   reader.readAsDataURL(file);
 }
 
-function clearImage() {
-  fetch(`${API}/clear-image`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email })
-  });
-}
+const clearImage = () => send("clear-image");
