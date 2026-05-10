@@ -26,9 +26,7 @@ function connectWS() {
     }
   };
 
-  ws.onclose = () => {
-    setTimeout(connectWS, 2000);
-  };
+  ws.onclose = () => setTimeout(connectWS, 2000);
 }
 
 connectWS();
@@ -39,39 +37,41 @@ connectWS();
 
 function updateUI(data) {
 
-  // countdown
+  /* countdown */
+  const countdownEl = document.getElementById("countdown");
+
   if (data.countdown) {
     const c = data.countdown;
-    document.getElementById("countdown").innerText =
+
+    countdownEl.innerText =
       `${c.years || 0}Y ${c.months || 0}M ${c.weeks || 0}W ` +
       `${c.days || 0}D ${c.hours || 0}H ${c.minutes || 0}M ${c.seconds || 0}S`;
+  } else {
+    countdownEl.innerText = "PAUSED";
   }
 
-  // status
+  /* status */
   document.getElementById("status").innerText =
     data.launchEnabled ? "ACTIVE" : "STANDBY";
 
-  // telemetry
-  if (data.telemetry) {
-    const t = data.telemetry;
-    document.getElementById("telemetry").innerText =
-      `ALT: ${t.altitude ?? 0} | VEL: ${t.velocity ?? 0} | FUEL: ${t.fuel ?? 0}`;
-  }
-
-  // logs
+  /* logs */
+  const logsEl = document.getElementById("logs");
   if (data.logs) {
-    document.getElementById("logs").innerText = data.logs.join("\n");
+    logsEl.innerText = data.logs.join("\n");
   }
 
-  // news
+  /* news */
   document.getElementById("news").innerText =
     data.news || "NO ACTIVE NEWS";
 
-  // image
+  /* image (inside news) */
   const img = document.getElementById("newsImage");
+
   if (data.newsImage) {
     img.src = data.newsImage;
     img.style.display = "block";
+  } else {
+    img.style.display = "none";
   }
 }
 
@@ -110,7 +110,7 @@ function isDirector() {
 }
 
 /* =========================
-   ACTIONS
+   CONTROL ACTIONS
 ========================= */
 
 function toggleLaunch() {
@@ -159,6 +159,30 @@ function setCountdown() {
 }
 
 /* =========================
+   STOP / RESUME COUNTDOWN
+========================= */
+
+function stopCountdown() {
+  if (!isDirector()) return alert("Access denied");
+
+  fetch(`${API}/stop-countdown`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
+}
+
+function resumeCountdown() {
+  if (!isDirector()) return alert("Access denied");
+
+  fetch(`${API}/resume-countdown`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
+}
+
+/* =========================
    NEWS
 ========================= */
 
@@ -176,7 +200,7 @@ function setNews() {
 }
 
 /* =========================
-   IMAGE UPLOAD (ADMIN ONLY)
+   IMAGE UPLOAD (NEWS)
 ========================= */
 
 function uploadImage() {
