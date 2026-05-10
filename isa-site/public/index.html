@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ISA CONTROL V3</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <h1>🚀 ISA MISSION CONTROL</h1>
+    <p class="sub">Real-time flight operations system</p>
+  </header>
+
+  <!-- LOGIN SECTION -->
+  <section class="panel">
+    <h2>Authentication</h2>
+
+    <div class="row">
+      <input id="email" type="email" placeholder="Enter operator email">
+      <button onclick="login()">LOGIN</button>
+    </div>
+
+    <p id="role">ROLE: ---</p>
+  </section>
+
+  <!-- MAIN STATUS -->
+  <section class="grid">
+
+    <!-- COUNTDOWN -->
+    <div class="card">
+      <h3>Countdown</h3>
+      <h2 id="countdown">---</h2>
+    </div>
+
+    <!-- STATUS -->
+    <div class="card">
+      <h3>Mission Status</h3>
+      <h2 id="status">---</h2>
+    </div>
+
+  </section>
+
+  <!-- TELEMETRY -->
+  <section class="panel">
+    <h2>Telemetry</h2>
+    <div id="telemetry" class="telemetry-box"></div>
+  </section>
+
+  <!-- LOGS -->
+  <section class="panel">
+    <h2>System Logs</h2>
+    <pre id="logs" class="logs"></pre>
+  </section>
+
+  <!-- DIRECTOR CONTROLS -->
+  <section id="directorPanel" class="panel hidden">
+    <h2>Director Controls</h2>
+
+    <div class="row">
+      <button class="btn primary" onclick="toggleLaunch()">TOGGLE LAUNCH</button>
+      <button class="btn danger" onclick="abortLaunch()">ABORT MISSION</button>
+    </div>
+  </section>
+
+  <!-- VISUAL / ANIMATION AREA -->
+  <section class="panel">
+    <h2>Launch Visualization</h2>
+    <div id="launchScene" class="scene"></div>
+  </section>
+
+  <!-- SCRIPT -->
+  <script src="app.js"></script>
+
+</body>
+</html>
