@@ -1,22 +1,18 @@
 let email = "";
 let role = "guest";
-
 const API = window.location.origin;
+
+let launchTime = null;
+let countdownActive = true;
 
 /* =========================
    WS
 ========================= */
 
-let launchTime = null;
-let countdownActive = true;
-
 function connectWS() {
-  const WS_URL =
-    location.protocol === "https:"
-      ? `wss://${location.host}`
-      : `ws://${location.host}`;
-
-  const ws = new WebSocket(WS_URL);
+  const ws = new WebSocket(
+    location.protocol === "https:" ? `wss://${location.host}` : `ws://${location.host}`
+  );
 
   ws.onmessage = (msg) => {
     const data = JSON.parse(msg.data);
@@ -29,7 +25,7 @@ function connectWS() {
 connectWS();
 
 /* =========================
-   SMOOTH COUNTDOWN LOOP
+   COUNTDOWN LOOP (CLIENT SIDE)
 ========================= */
 
 setInterval(() => {
@@ -55,7 +51,6 @@ setInterval(() => {
 
   el.innerText = `${days}D ${hours}H ${minutes}M ${seconds}S`;
   stateEl.innerText = "RUNNING";
-
 }, 1000);
 
 /* =========================
@@ -63,16 +58,11 @@ setInterval(() => {
 ========================= */
 
 function updateUI(data) {
-
   launchTime = data.launchTime;
   countdownActive = data.countdownActive;
 
-  if (!countdownActive) {
-    document.getElementById("countdownState").innerText = "PAUSED";
-  }
-
   document.getElementById("status").innerText =
-    data.launchEnabled ? "ACTIVE" : "STANDBY";
+    data.statusText || "STANDBY";
 
   document.getElementById("news").innerText =
     data.news || "NO ACTIVE NEWS";
@@ -87,6 +77,17 @@ function updateUI(data) {
 
   document.getElementById("logs").innerText =
     (data.logs || []).join("\n");
+
+  if (data.missionInfo) {
+    document.getElementById("miRocket").innerText = data.missionInfo.rocket || "---";
+    document.getElementById("miPayload").innerText = data.missionInfo.payload || "---";
+    document.getElementById("miDestination").innerText = data.missionInfo.destination || "---";
+    document.getElementById("miAgency").innerText = data.missionInfo.agency || "---";
+  }
+
+  if (!countdownActive) {
+    document.getElementById("countdownState").innerText = "PAUSED";
+  }
 }
 
 /* =========================
@@ -114,22 +115,23 @@ async function login() {
 }
 
 /* =========================
-   ACTIONS
+   HELPERS
 ========================= */
 
-function send(path, body = {}) {
+const send = (path, body = {}) =>
   fetch(`${API}/${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, ...body })
   });
-}
 
-/* launch */
+/* =========================
+   ACTIONS
+========================= */
+
 const toggleLaunch = () => send("toggle");
 const abortMission = () => send("abort");
 
-/* countdown */
 const setCountdown = () => send("set-countdown", {
   years: +years.value || 0,
   months: +months.value || 0,
@@ -143,24 +145,34 @@ const setCountdown = () => send("set-countdown", {
 const stopCountdown = () => send("stop-countdown");
 const resumeCountdown = () => send("resume-countdown");
 
-/* news */
-const setNews = () => send("set-news", {
-  message: newsInput.value
-});
-
+/* NEWS */
+const setNews = () => send("set-news", { message: newsInput.value });
 const clearNews = () => send("clear-news");
 
-/* image */
+/* IMAGE */
 function uploadImage() {
   const file = imageInput.files[0];
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = () =>
     send("set-news-image", { image: reader.result });
-  };
 
   reader.readAsDataURL(file);
 }
 
 const clearImage = () => send("clear-image");
+
+/* MISSION INFO */
+const setMissionInfo = () =>
+  send("set-mission-info", {
+    rocket: rocketInput.value,
+    payload: payloadInput.value,
+    destination: destinationInput.value,
+    agency: agencyInput.value
+  });
+
+const setStatusText = () =>
+  send("set-status-text", {
+    text: statusInput.value
+  });
