@@ -1,10 +1,10 @@
 let email = "";
 let role = "guest";
 
-const API_BASE = window.location.origin;
+const API = window.location.origin;
 
 /* =========================
-   WEBSOCKET
+   WS
 ========================= */
 
 const WS_URL =
@@ -12,79 +12,52 @@ const WS_URL =
     ? `wss://${location.host}`
     : `ws://${location.host}`;
 
-let ws;
+let ws = new WebSocket(WS_URL);
 
-function connectWS() {
-  ws = new WebSocket(WS_URL);
-
-  ws.onopen = () => console.log("WS connected");
-
-  ws.onclose = () => {
-    console.warn("WS reconnecting...");
-    setTimeout(connectWS, 2000);
-  };
-
-  ws.onerror = err => console.error(err);
-
-  ws.onmessage = msg => {
-    const data = JSON.parse(msg.data);
-    updateUI(data);
-  };
-}
-
-connectWS();
+ws.onmessage = (msg) => {
+  const data = JSON.parse(msg.data);
+  updateUI(data);
+};
 
 /* =========================
-   UI UPDATE
+   UI
 ========================= */
 
 function updateUI(data) {
-  const countdown = document.getElementById("countdown");
+
+  /* countdown */
+  if (data.countdown) {
+    document.getElementById("countdown").innerText =
+      `${data.countdown.years}Y ${data.countdown.months}M ${data.countdown.days}D ` +
+      `${data.countdown.hours}H ${data.countdown.minutes}M ${data.countdown.seconds}S`;
+  }
+
+  /* status */
   const status = document.getElementById("status");
-  const telemetry = document.getElementById("telemetry");
-  const logs = document.getElementById("logs");
-  const news = document.getElementById("news");
-  const newsImg = document.getElementById("newsImage");
+  status.innerText = data.launchEnabled ? "ACTIVE" : "STANDBY";
 
-  /* COUNTDOWN (FULL BREAKDOWN) */
-  if (countdown && data.countdown) {
-    const c = data.countdown;
-
-    countdown.innerText =
-      `Y:${c.years} M:${c.months} W:${c.weeks} D:${c.days} ` +
-      `H:${c.hours} M:${c.minutes} S:${c.seconds}`;
+  /* telemetry */
+  if (data.telemetry) {
+    document.getElementById("telemetry").innerText =
+      `ALT: ${data.telemetry.altitude.toFixed(1)} | ` +
+      `VEL: ${data.telemetry.velocity.toFixed(1)} | ` +
+      `FUEL: ${data.telemetry.fuel.toFixed(1)}`;
   }
 
-  /* STATUS */
-  if (status) {
-    status.innerText = data.launchEnabled ? "ACTIVE" : "STANDBY";
-    status.style.color = data.launchEnabled ? "#00ff99" : "#ff5555";
+  /* logs */
+  if (data.logs) {
+    document.getElementById("logs").innerText = data.logs.join("\n");
   }
 
-  /* TELEMETRY */
-  if (telemetry && data.telemetry) {
-    const t = data.telemetry;
+  /* news */
+  document.getElementById("news").innerText =
+    data.news || "NO ACTIVE NEWS";
 
-    telemetry.innerText =
-      `ALT: ${t.altitude.toFixed(1)} | ` +
-      `VEL: ${t.velocity.toFixed(1)} | ` +
-      `FUEL: ${t.fuel.toFixed(1)}`;
-  }
-
-  /* LOGS */
-  if (logs && Array.isArray(data.logs)) {
-    logs.innerText = data.logs.join("\n");
-  }
-
-  /* NEWS TEXT */
-  if (news) {
-    news.innerText = data.news || "NO ACTIVE NEWS";
-  }
-
-  /* NEWS IMAGE */
-  if (newsImg && data.newsImage) {
-    newsImg.src = data.newsImage;
-    newsImg.style.display = "block";
+  /* image */
+  const img = document.getElementById("newsImage");
+  if (data.newsImage) {
+    img.src = data.newsImage;
+    img.style.display = "block";
   }
 }
 
@@ -93,124 +66,103 @@ function updateUI(data) {
 ========================= */
 
 async function login() {
-  email = document.getElementById("email")?.value || "";
+  email = document.getElementById("email").value;
 
-  const res = await fetch(`${API_BASE}/login`, {
+  const res = await fetch(`${API}/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ email })
   });
 
   const data = await res.json();
-  role = data.role || "guest";
+  role = data.role;
 
-  document.getElementById("role").innerText = `ROLE: ${role}`;
+  document.getElementById("role").innerText = "ROLE: " + role;
 
   document.getElementById("directorPanel").style.display =
     role === "director" ? "block" : "none";
 }
 
 /* =========================
-   CONTROL ACTIONS
+   ACTIONS
 ========================= */
 
-async function toggleLaunch() {
-  if (!email) return alert("Login required");
-
-  await fetch(`${API_BASE}/toggle`, {
+function toggleLaunch() {
+  fetch(`${API}/toggle`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ email })
   });
 }
 
-async function abortLaunch() {
-  if (!email) return alert("Login required");
-
-  await fetch(`${API_BASE}/abort`, {
+function abortLaunch() {
+  fetch(`${API}/abort`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ email })
   });
 }
 
 /* =========================
-   COUNTDOWN CONTROL
+   COUNTDOWN
 ========================= */
 
-async function setCountdown() {
-  if (role !== "director") return;
-
-  await fetch(`${API_BASE}/set-countdown`, {
+function setCountdown() {
+  fetch(`${API}/set-countdown`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type":"application/json"},
     body: JSON.stringify({
       email,
-
-      years: +document.getElementById("years")?.value || 0,
-      months: +document.getElementById("months")?.value || 0,
-      weeks: +document.getElementById("weeks")?.value || 0,
-      days: +document.getElementById("days")?.value || 0,
-      hours: +document.getElementById("hours")?.value || 0,
-      minutes: +document.getElementById("minutes")?.value || 0,
-      seconds: +document.getElementById("seconds")?.value || 0
+      years: +years.value || 0,
+      months: +months.value || 0,
+      weeks: +weeks.value || 0,
+      days: +days.value || 0,
+      hours: +hours.value || 0,
+      minutes: +minutes.value || 0,
+      seconds: +seconds.value || 0
     })
   });
 }
 
 /* =========================
-   NEWS TEXT
+   NEWS
 ========================= */
 
-async function setNews() {
-  if (role !== "director") return;
-
-  const message = document.getElementById("newsInput")?.value;
-
-  await fetch(`${API_BASE}/set-news`, {
+function setNews() {
+  fetch(`${API}/set-news`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, message })
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      email,
+      message: newsInput.value
+    })
   });
 }
 
 /* =========================
-   DRAG & DROP IMAGE
+   DRAG IMAGE
 ========================= */
 
 const dropZone = document.getElementById("dropZone");
 
-if (dropZone) {
-  dropZone.addEventListener("dragover", e => {
-    e.preventDefault();
-    dropZone.style.borderColor = "#00ff99";
-  });
+dropZone?.addEventListener("drop", e => {
+  e.preventDefault();
 
-  dropZone.addEventListener("dragleave", () => {
-    dropZone.style.borderColor = "#00d9ff";
-  });
+  const file = e.dataTransfer.files[0];
+  const reader = new FileReader();
 
-  dropZone.addEventListener("drop", e => {
-    e.preventDefault();
+  reader.onload = () => {
+    fetch(`${API}/set-news-image`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        email,
+        image: reader.result
+      })
+    });
+  };
 
-    if (role !== "director") return;
+  reader.readAsDataURL(file);
+});
 
-    const file = e.dataTransfer.files[0];
-    if (!file || !file.type.startsWith("image/")) return;
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      fetch(`${API_BASE}/set-news-image`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          image: reader.result
-        })
-      });
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
+dropZone?.addEventListener("dragover", e => e.preventDefault());
