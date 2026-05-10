@@ -15,7 +15,9 @@
   <p class="sub">Live operational command system</p>
 </header>
 
-<!-- AUTH -->
+<!-- =========================
+     AUTH
+========================= -->
 <section class="panel">
   <h2>Authentication</h2>
 
@@ -25,7 +27,9 @@
   <p id="role">ROLE: ---</p>
 </section>
 
-<!-- GRID -->
+<!-- =========================
+     DASHBOARD
+========================= -->
 <section class="grid">
 
   <div class="card">
@@ -40,32 +44,46 @@
 
 </section>
 
-<!-- TELEMETRY -->
-<section class="panel">
-  <h2>Telemetry</h2>
-  <div id="telemetry">---</div>
-</section>
-
-<!-- NEWS -->
+<!-- =========================
+     NEWS
+========================= -->
 <section class="panel">
   <h2>Mission News</h2>
 
   <div id="news" class="news-box">NO ACTIVE NEWS</div>
+
   <img id="newsImage" class="news-image" style="display:none"/>
 
-  <h3>Upload Mission Image (ADMIN ONLY)</h3>
+  <hr>
+
+  <h3>News Controls (ADMIN)</h3>
+
+  <input id="newsInput" placeholder="Enter mission update">
+
+  <button class="btn primary" onclick="setNews()">UPDATE NEWS</button>
+  <button class="btn danger" onclick="clearNews()">DELETE NEWS</button>
+
+  <hr>
+
+  <h3>Image Controls (ADMIN)</h3>
 
   <input type="file" id="imageInput">
-  <button onclick="uploadImage()">UPLOAD IMAGE</button>
+
+  <button class="btn primary" onclick="uploadImage()">UPLOAD IMAGE</button>
+  <button class="btn danger" onclick="clearImage()">DELETE IMAGE</button>
 </section>
 
-<!-- LOGS -->
+<!-- =========================
+     LOGS
+========================= -->
 <section class="panel">
   <h2>System Logs</h2>
   <pre id="logs" class="logs"></pre>
 </section>
 
-<!-- DIRECTOR PANEL -->
+<!-- =========================
+     DIRECTOR PANEL
+========================= -->
 <section id="directorPanel" class="panel hidden">
 
   <h2>Director Controls</h2>
@@ -75,7 +93,7 @@
 
   <hr>
 
-  <h3>Set Countdown</h3>
+  <h3>Countdown Control</h3>
 
   <div class="row">
     <input id="years" placeholder="Years">
@@ -87,16 +105,10 @@
     <input id="seconds" placeholder="Seconds">
   </div>
 
-  <button class="btn primary" onclick="setCountdown()">
-    APPLY COUNTDOWN
-  </button>
+  <button class="btn primary" onclick="setCountdown()">SET COUNTDOWN</button>
 
-  <hr>
-
-  <h3>Mission News</h3>
-
-  <input id="newsInput" placeholder="Enter mission update">
-  <button class="btn primary" onclick="setNews()">UPDATE NEWS</button>
+  <button class="btn danger" onclick="stopCountdown()">STOP COUNTDOWN</button>
+  <button class="btn primary" onclick="resumeCountdown()">RESUME COUNTDOWN</button>
 
 </section>
 
