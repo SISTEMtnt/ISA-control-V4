@@ -1,7 +1,6 @@
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
-const sqlite3 = require("sqlite3").verbose();
 
 const app = express();
 const server = http.createServer(app);
@@ -11,33 +10,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
 
 /* =========================
-   DB
-========================= */
-
-const db = new sqlite3.Database("isa.db");
-
-db.run(`
-CREATE TABLE IF NOT EXISTS mission (
-  id INTEGER PRIMARY KEY,
-  launchTime INTEGER,
-  launchEnabled INTEGER,
-  news TEXT,
-  newsImage TEXT
-)`);
-
-db.run(`INSERT OR IGNORE INTO mission VALUES (1,0,0,'','')`);
-
-let state = {
-  launchTime: Date.now() + 3600000,
-  launchEnabled: false,
-  news: "",
-  newsImage: "",
-  logs: [],
-  telemetry: { altitude: 0, velocity: 0, fuel: 100 }
-};
-
-/* =========================
-   USERS
+   USERS (simple auth)
 ========================= */
 
 const USERS = {
@@ -45,11 +18,33 @@ const USERS = {
   "operator@isa.com": "operator"
 };
 
-const role = (email) => USERS[email] || "guest";
-const isDirector = (email) => role(email) === "director";
+function getRole(email) {
+  return USERS[email] || "guest";
+}
+
+function isDirector(email) {
+  return getRole(email) === "director";
+}
 
 /* =========================
-   TIME SYSTEM
+   STATE
+========================= */
+
+let state = {
+  launchEnabled: false,
+  launchTime: Date.now() + 3600000, // default 1h
+  news: "",
+  newsImage: "",
+  logs: [],
+  telemetry: {
+    altitude: 0,
+    velocity: 0,
+    fuel: 100
+  }
+};
+
+/* =========================
+   TIME ENGINE
 ========================= */
 
 function msLeft() {
@@ -75,7 +70,7 @@ function formatCountdown(ms) {
 
 function log(msg) {
   state.logs.unshift(`[${new Date().toISOString()}] ${msg}`);
-  if (state.logs.length > 25) state.logs.pop();
+  if (state.logs.length > 30) state.logs.pop();
 }
 
 /* =========================
@@ -105,19 +100,24 @@ setInterval(() => {
   if (state.launchEnabled) {
     state.telemetry.altitude += Math.random() * 3;
     state.telemetry.velocity += Math.random() * 1.2;
-    state.telemetry.fuel = Math.max(0, state.telemetry.fuel - 0.2);
+    state.telemetry.fuel = Math.max(0, state.telemetry.fuel - 0.15);
   }
 
   broadcast();
 }, 1000);
 
 /* =========================
-   API
+   AUTH
 ========================= */
 
 app.post("/login", (req, res) => {
-  res.json({ role: role(req.body.email) });
+  const email = req.body.email || "";
+  res.json({ role: getRole(email) });
 });
+
+/* =========================
+   CONTROL
+========================= */
 
 app.post("/toggle", (req, res) => {
   if (!isDirector(req.body.email)) return res.sendStatus(403);
@@ -139,18 +139,31 @@ app.post("/abort", (req, res) => {
   res.json({ ok: true });
 });
 
-/* countdown set (ALL UNITS) */
+/* =========================
+   COUNTDOWN
+========================= */
+
 app.post("/set-countdown", (req, res) => {
   if (!isDirector(req.body.email)) return res.sendStatus(403);
 
+  const {
+    years = 0,
+    months = 0,
+    weeks = 0,
+    days = 0,
+    hours = 0,
+    minutes = 0,
+    seconds = 0
+  } = req.body;
+
   const ms =
-    (req.body.years || 0) * 31536000000 +
-    (req.body.months || 0) * 2592000000 +
-    (req.body.weeks || 0) * 604800000 +
-    (req.body.days || 0) * 86400000 +
-    (req.body.hours || 0) * 3600000 +
-    (req.body.minutes || 0) * 60000 +
-    (req.body.seconds || 0) * 1000;
+    years * 31536000000 +
+    months * 2592000000 +
+    weeks * 604800000 +
+    days * 86400000 +
+    hours * 3600000 +
+    minutes * 60000 +
+    seconds * 1000;
 
   state.launchTime = Date.now() + ms;
 
@@ -160,8 +173,13 @@ app.post("/set-countdown", (req, res) => {
   res.json({ ok: true });
 });
 
-/* news */
+/* =========================
+   NEWS
+========================= */
+
 app.post("/set-news", (req, res) => {
+  if (!isDirector(req.body.email)) return res.sendStatus(403);
+
   state.news = req.body.message || "";
   log("News updated");
 
@@ -169,18 +187,17 @@ app.post("/set-news", (req, res) => {
   res.json({ ok: true });
 });
 
-/* image upload (BOTH operator + director) */
+/* =========================
+   IMAGE (director only)
+========================= */
+
 app.post("/upload-image", (req, res) => {
-  const r = role(req.body.email);
+  if (!isDirector(req.body.email)) return res.sendStatus(403);
 
-  if (r !== "director" && r !== "operator")
-    return res.sendStatus(403);
+  state.newsImage = req.body.image || "";
+  log("Image uploaded");
 
-  state.newsImage = req.body.image;
-
-  log(`Image uploaded by ${r}`);
   broadcast();
-
   res.json({ ok: true });
 });
 
@@ -204,5 +221,5 @@ wss.on("connection", ws => {
 ========================= */
 
 server.listen(3000, () => {
-  console.log("ISA SYSTEM ONLINE");
+  console.log("ISA SYSTEM ONLINE - PORT 3000");
 });
