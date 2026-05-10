@@ -46,6 +46,18 @@
 </section>
 
 <!-- =========================
+     MISSION INFO (NEW ADDITION)
+========================= -->
+<section class="panel">
+  <h2>Mission Information</h2>
+
+  <p><b>Rocket:</b> <span id="miRocket">---</span></p>
+  <p><b>Payload:</b> <span id="miPayload">---</span></p>
+  <p><b>Destination:</b> <span id="miDestination">---</span></p>
+  <p><b>Agency:</b> <span id="miAgency">---</span></p>
+</section>
+
+<!-- =========================
      NEWS
 ========================= -->
 <section class="panel">
@@ -117,6 +129,24 @@
     <button class="btn danger" onclick="stopCountdown()">STOP</button>
     <button class="btn primary" onclick="resumeCountdown()">RESUME</button>
   </div>
+
+  <hr>
+
+  <h3>Status Text Control</h3>
+
+  <input id="statusInput" placeholder="STANDBY / ACTIVE / HOLD">
+  <button class="btn primary" onclick="setStatusText()">UPDATE STATUS</button>
+
+  <hr>
+
+  <h3>Mission Info Editor</h3>
+
+  <input id="rocketInput" placeholder="Rocket">
+  <input id="payloadInput" placeholder="Payload">
+  <input id="destinationInput" placeholder="Destination">
+  <input id="agencyInput" placeholder="Agency">
+
+  <button class="btn primary" onclick="setMissionInfo()">UPDATE MISSION INFO</button>
 
 </section>
 
