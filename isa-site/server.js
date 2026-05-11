@@ -1,10 +1,13 @@
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
+const multer = require("multer");
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
+
+const upload = multer({ limits: { fileSize: 10 * 1024 * 1024 } });
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
@@ -35,7 +38,7 @@ let state = {
 };
 
 /* =========================
-   AUTH SYSTEM
+   AUTH
 ========================= */
 
 const USERS = {
@@ -46,34 +49,13 @@ const USERS = {
 };
 
 function checkAuth(email, password) {
-  const user = USERS[email];
-  if (!user) return "guest";
-
-  return user.password === password ? user.role : "guest";
+  const u = USERS[email];
+  if (!u) return "guest";
+  return u.password === password ? u.role : "guest";
 }
 
 /* =========================
-   MINECRAFT CONFIG
-========================= */
-
-const MINECRAFT_WORLD_NAME = "ISA headquarters";
-
-/* =========================
-   WORLD NORMALIZER
-========================= */
-
-function normalizeWorld(world) {
-  if (!world) return "";
-
-  if (world.includes("ISA headquarters")) {
-    return MINECRAFT_WORLD_NAME;
-  }
-
-  return world;
-}
-
-/* =========================
-   LOG SYSTEM
+   LOGS
 ========================= */
 
 function log(msg) {
@@ -82,42 +64,34 @@ function log(msg) {
 }
 
 /* =========================
-   BROADCAST
+   WS
 ========================= */
 
 function broadcast() {
-  const payload = JSON.stringify({
-    ...state,
-    players
-  });
+  const data = JSON.stringify({ ...state, players });
 
   wss.clients.forEach(c => {
-    if (c.readyState === 1) c.send(payload);
+    if (c.readyState === 1) c.send(data);
   });
 }
 
 /* =========================
-   MINECRAFT STATUS UPDATE
+   MINECRAFT STATUS
 ========================= */
 
 app.post("/mc-status", (req, res) => {
-  const { name, online, world } = req.body;
-
-  const fixedWorld = normalizeWorld(world);
+  const { name, online, world, x, z } = req.body;
 
   players[name] = {
     online: !!online,
-    world: fixedWorld
+    world: world || "",
+    x: x || 0,
+    z: z || 0
   };
 
-  log(
-    `${name} → ${online ? "ONLINE" : "OFFLINE"} ${
-      fixedWorld ? `(world: ${fixedWorld})` : ""
-    }`
-  );
+  log(`${name} → ${online ? "ONLINE" : "OFFLINE"} (${world})`);
 
   broadcast();
-
   res.json({ ok: true });
 });
 
@@ -127,23 +101,39 @@ app.post("/mc-status", (req, res) => {
 
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
-
-  const role = checkAuth(email, password);
-
-  res.json({ role });
+  res.json({ role: checkAuth(email, password) });
 });
 
 /* =========================
-   DIRECT ACTION PROTECTION
+   UPLOAD NEWS + IMAGE (FIXED)
+========================= */
+
+app.post("/upload-news", upload.single("image"), (req, res) => {
+  const { message } = req.body;
+
+  state.news = message || "";
+
+  if (req.file) {
+    state.newsImage =
+      "data:" +
+      req.file.mimetype +
+      ";base64," +
+      req.file.buffer.toString("base64");
+  }
+
+  log("NEWS UPDATED (text + image)");
+
+  broadcast();
+  res.json({ ok: true });
+});
+
+/* =========================
+   ACTIONS
 ========================= */
 
 function isDirector(email, password) {
   return checkAuth(email, password) === "director";
 }
-
-/* =========================
-   ACTION ROUTES (SAFE)
-========================= */
 
 app.post("/toggle", (req, res) => {
   if (!isDirector(req.body.email, req.body.password))
@@ -172,10 +162,7 @@ app.post("/abort", (req, res) => {
 ========================= */
 
 wss.on("connection", ws => {
-  ws.send(JSON.stringify({
-    ...state,
-    players
-  }));
+  ws.send(JSON.stringify({ ...state, players }));
 });
 
 /* =========================
