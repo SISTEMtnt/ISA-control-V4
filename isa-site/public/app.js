@@ -8,7 +8,7 @@ let launchTime = null;
 let countdownActive = true;
 
 /* =========================
-   WS CONNECTION
+   WS
 ========================= */
 
 function connectWS() {
@@ -29,57 +29,14 @@ function connectWS() {
 connectWS();
 
 /* =========================
-   COUNTDOWN
-========================= */
-
-setInterval(() => {
-  if (!launchTime || !countdownActive) return;
-
-  const diff = launchTime - Date.now();
-
-  const el = document.getElementById("countdown");
-  const stateEl = document.getElementById("countdownState");
-
-  if (!el || !stateEl) return;
-
-  if (diff <= 0) {
-    el.innerText = "LAUNCHED";
-    stateEl.innerText = "DONE";
-    return;
-  }
-
-  let s = Math.floor(diff / 1000);
-
-  const seconds = s % 60;
-  s = Math.floor(s / 60);
-
-  const minutes = s % 60;
-  s = Math.floor(s / 60);
-
-  const hours = s % 24;
-  s = Math.floor(s / 24);
-
-  const days = s;
-
-  el.innerText = `${days}D ${hours}H ${minutes}M ${seconds}S`;
-  stateEl.innerText = "RUNNING";
-}, 1000);
-
-/* =========================
    UI UPDATE
 ========================= */
 
 function updateUI(data) {
-  // safety fix
-  if (!data.players) data.players = {};
-  if (!data.missionInfo) data.missionInfo = {};
-  if (!data.logs) data.logs = [];
-
   launchTime = data.launchTime;
   countdownActive = data.countdownActive;
 
-  document.getElementById("status").innerText =
-    data.statusText || "STANDBY";
+  document.getElementById("status").innerText = data.statusText;
 
   document.getElementById("news").innerText =
     data.news || "NO ACTIVE NEWS";
@@ -95,52 +52,22 @@ function updateUI(data) {
   }
 
   document.getElementById("logs").innerText =
-    data.logs.join("\n");
+    (data.logs || []).join("\n");
 
-  document.getElementById("miRocket").innerText =
-    data.missionInfo.rocket || "---";
-
-  document.getElementById("miPayload").innerText =
-    data.missionInfo.payload || "---";
-
-  document.getElementById("miDestination").innerText =
-    data.missionInfo.destination || "---";
-
-  document.getElementById("miAgency").innerText =
-    data.missionInfo.agency || "---";
-
-  /* =========================
-     MINECRAFT STATUS
-  ========================= */
-
-  const p = data.players?.MossBlocktnt;
-
-  if (p) {
-    document.getElementById("mcStatus").innerText =
-      p.online ? "ONLINE" : "OFFLINE";
-
-    document.getElementById("mcWorld").innerText =
-      p.online ? p.world : "NOT PLAYING";
+  if (data.missionInfo) {
+    document.getElementById("miRocket").innerText = data.missionInfo.rocket;
+    document.getElementById("miPayload").innerText = data.missionInfo.payload;
+    document.getElementById("miDestination").innerText = data.missionInfo.destination;
+    document.getElementById("miAgency").innerText = data.missionInfo.agency;
   }
-
-  document.getElementById("playersBox").innerText =
-    JSON.stringify(data.players, null, 2);
-
-  /* =========================
-     RADAR + MAP + WORKERS
-  ========================= */
 
   updateRadar(data.players);
-  updateMap(data.players);
+  updateMap2D(data.players);
   updateWorkers(data.players);
-
-  if (!countdownActive) {
-    document.getElementById("countdownState").innerText = "PAUSED";
-  }
 }
 
 /* =========================
-   RADAR SYSTEM
+   RADAR
 ========================= */
 
 function updateRadar(players) {
@@ -152,8 +79,7 @@ function updateRadar(players) {
   let i = 0;
 
   for (const name in players) {
-    const p = players[name];
-    if (!p.online) continue;
+    if (!players[name].online) continue;
 
     const dot = document.createElement("div");
     dot.className = "dot";
@@ -161,11 +87,8 @@ function updateRadar(players) {
     const angle = i * 2.2;
     const radius = 90;
 
-    const x = 130 + Math.cos(angle) * radius;
-    const y = 130 + Math.sin(angle) * radius;
-
-    dot.style.left = x + "px";
-    dot.style.top = y + "px";
+    dot.style.left = 130 + Math.cos(angle) * radius + "px";
+    dot.style.top = 130 + Math.sin(angle) * radius + "px";
 
     radar.appendChild(dot);
     i++;
@@ -173,50 +96,47 @@ function updateRadar(players) {
 }
 
 /* =========================
-   MAP SYSTEM
+   MAPPA 2D
 ========================= */
 
-function updateMap(players) {
-  const map = document.getElementById("map");
+function updateMap2D(players) {
+  const map = document.getElementById("map2d");
   if (!map) return;
 
   map.innerHTML = "";
 
-  let i = 0;
+  const scale = 0.3;
 
   for (const name in players) {
     const p = players[name];
     if (!p.online) continue;
 
-    const el = document.createElement("div");
-    el.innerText = "📍 " + name;
+    const dot = document.createElement("div");
+    dot.className = "playerDot";
 
-    el.style.position = "absolute";
-    el.style.left = (20 + i * 80) + "px";
-    el.style.top = "80px";
-    el.style.color = "#00e5ff";
-    el.style.textShadow = "0 0 10px #00e5ff";
+    const cx = map.clientWidth / 2;
+    const cy = map.clientHeight / 2;
 
-    map.appendChild(el);
-    i++;
+    dot.style.left = cx + p.x * scale + "px";
+    dot.style.top = cy + p.z * scale + "px";
+
+    map.appendChild(dot);
   }
 }
 
 /* =========================
-   WORKERS SYSTEM
+   WORKERS
 ========================= */
 
 function updateWorkers(players) {
   let count = 0;
 
-  for (const name in players) {
-    if (players[name].online) count++;
+  for (const p in players) {
+    if (players[p].online) count++;
   }
 
   const el = document.getElementById("workersCount");
-  if (el) {
-    el.innerText = count + " ACTIVE WORKERS";
-  }
+  if (el) el.innerText = count + " ACTIVE WORKERS";
 }
 
 /* =========================
@@ -236,8 +156,7 @@ async function login() {
   const data = await res.json();
   role = data.role;
 
-  document.getElementById("role").innerText =
-    "ROLE: " + role;
+  document.getElementById("role").innerText = "ROLE: " + role;
 
   document.getElementById("directorPanel").classList.toggle(
     "hidden",
@@ -246,68 +165,19 @@ async function login() {
 }
 
 /* =========================
-   HELPERS
+   UPLOAD FIXED
 ========================= */
 
-const send = (path, body = {}) =>
-  fetch(`${API}/${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email,
-      password,
-      ...body
-    })
-  });
-
-/* =========================
-   ACTIONS
-========================= */
-
-const toggleLaunch = () => send("toggle");
-const abortMission = () => send("abort");
-
-const setCountdown = () =>
-  send("set-countdown", {
-    years: +years.value || 0,
-    months: +months.value || 0,
-    weeks: +weeks.value || 0,
-    days: +days.value || 0,
-    hours: +hours.value || 0,
-    minutes: +minutes.value || 0,
-    seconds: +seconds.value || 0
-  });
-
-const stopCountdown = () => send("stop-countdown");
-const resumeCountdown = () => send("resume-countdown");
-
-const setNews = () =>
-  send("set-news", { message: newsInput.value });
-
-const clearNews = () => send("clear-news");
-
-function uploadImage() {
+function uploadNews() {
   const file = imageInput.files[0];
-  if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = () =>
-    send("set-news-image", { image: reader.result });
+  const form = new FormData();
+  form.append("message", newsInput.value);
 
-  reader.readAsDataURL(file);
+  if (file) form.append("image", file);
+
+  fetch(`${API}/upload-news`, {
+    method: "POST",
+    body: form
+  });
 }
-
-const clearImage = () => send("clear-image");
-
-const setMissionInfo = () =>
-  send("set-mission-info", {
-    rocket: rocketInput.value,
-    payload: payloadInput.value,
-    destination: destinationInput.value,
-    agency: agencyInput.value
-  });
-
-const setStatusText = () =>
-  send("set-status-text", {
-    text: statusInput.value
-  });
