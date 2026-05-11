@@ -29,7 +29,7 @@ function connectWS() {
 connectWS();
 
 /* =========================
-   COUNTDOWN LOOP
+   COUNTDOWN
 ========================= */
 
 setInterval(() => {
@@ -47,16 +47,9 @@ setInterval(() => {
   }
 
   let s = Math.floor(diff / 1000);
-
-  const seconds = s % 60;
-  s = Math.floor(s / 60);
-
-  const minutes = s % 60;
-  s = Math.floor(s / 60);
-
-  const hours = s % 24;
-  s = Math.floor(s / 24);
-
+  const seconds = s % 60; s = Math.floor(s / 60);
+  const minutes = s % 60; s = Math.floor(s / 60);
+  const hours = s % 24; s = Math.floor(s / 24);
   const days = s;
 
   el.innerText = `${days}D ${hours}H ${minutes}M ${seconds}S`;
@@ -78,7 +71,6 @@ function updateUI(data) {
     data.news || "NO ACTIVE NEWS";
 
   const img = document.getElementById("newsImage");
-
   if (data.newsImage) {
     img.src = data.newsImage;
     img.style.display = "block";
@@ -103,6 +95,23 @@ function updateUI(data) {
       data.missionInfo.agency || "---";
   }
 
+  /* =========================
+     MINECRAFT STATUS
+  ========================= */
+
+  const p = data.players?.MossBlocktnt;
+
+  if (p) {
+    document.getElementById("mcStatus").innerText =
+      p.online ? "ONLINE" : "OFFLINE";
+
+    document.getElementById("mcWorld").innerText =
+      p.online ? p.world : "NOT PLAYING";
+  }
+
+  document.getElementById("playersBox").innerText =
+    JSON.stringify(data.players, null, 2);
+
   if (!countdownActive) {
     document.getElementById("countdownState").innerText = "PAUSED";
   }
@@ -118,21 +127,14 @@ async function login() {
 
   const res = await fetch(`${API}/login`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      email,
-      password
-    })
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
   });
 
   const data = await res.json();
-
   role = data.role;
 
-  document.getElementById("role").innerText =
-    "ROLE: " + role;
+  document.getElementById("role").innerText = "ROLE: " + role;
 
   document.getElementById("directorPanel").classList.toggle(
     "hidden",
@@ -147,9 +149,7 @@ async function login() {
 const send = (path, body = {}) =>
   fetch(`${API}/${path}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       email,
       password,
@@ -162,7 +162,6 @@ const send = (path, body = {}) =>
 ========================= */
 
 const toggleLaunch = () => send("toggle");
-
 const abortMission = () => send("abort");
 
 const setCountdown = () =>
@@ -176,43 +175,26 @@ const setCountdown = () =>
     seconds: +seconds.value || 0
   });
 
-const stopCountdown = () =>
-  send("stop-countdown");
-
-const resumeCountdown = () =>
-  send("resume-countdown");
-
-/* NEWS */
+const stopCountdown = () => send("stop-countdown");
+const resumeCountdown = () => send("resume-countdown");
 
 const setNews = () =>
-  send("set-news", {
-    message: newsInput.value
-  });
+  send("set-news", { message: newsInput.value });
 
-const clearNews = () =>
-  send("clear-news");
-
-/* IMAGE */
+const clearNews = () => send("clear-news");
 
 function uploadImage() {
   const file = imageInput.files[0];
-
   if (!file) return;
 
   const reader = new FileReader();
-
   reader.onload = () =>
-    send("set-news-image", {
-      image: reader.result
-    });
+    send("set-news-image", { image: reader.result });
 
   reader.readAsDataURL(file);
 }
 
-const clearImage = () =>
-  send("clear-image");
-
-/* MISSION INFO */
+const clearImage = () => send("clear-image");
 
 const setMissionInfo = () =>
   send("set-mission-info", {
