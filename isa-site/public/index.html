@@ -15,21 +15,17 @@
   <p class="sub">Live operational command system</p>
 </header>
 
-<!-- =========================
-     AUTH
-========================= -->
 <section class="panel">
   <h2>Authentication</h2>
 
   <input id="email" type="email" placeholder="Operator email">
+  <input id="password" type="password" placeholder="Password">
+
   <button onclick="login()">LOGIN</button>
 
   <p id="role">ROLE: ---</p>
 </section>
 
-<!-- =========================
-     DASHBOARD
-========================= -->
 <section class="grid">
 
   <div class="card">
@@ -45,9 +41,6 @@
 
 </section>
 
-<!-- =========================
-     MISSION INFO (NEW ADDITION)
-========================= -->
 <section class="panel">
   <h2>Mission Information</h2>
 
@@ -57,15 +50,13 @@
   <p><b>Agency:</b> <span id="miAgency">---</span></p>
 </section>
 
-<!-- =========================
-     NEWS
-========================= -->
 <section class="panel">
   <h2>Mission News</h2>
 
   <div id="news" class="news-box">NO ACTIVE NEWS</div>
 
-  <img id="newsImage" class="news-image" style="display:none; max-width:100%; border-radius:8px;" />
+  <img id="newsImage" class="news-image"
+       style="display:none; max-width:100%; border-radius:8px;" />
 
   <hr>
 
@@ -90,17 +81,11 @@
   </div>
 </section>
 
-<!-- =========================
-     LOGS
-========================= -->
 <section class="panel">
   <h2>System Logs</h2>
   <pre id="logs" class="logs"></pre>
 </section>
 
-<!-- =========================
-     DIRECTOR PANEL
-========================= -->
 <section id="directorPanel" class="panel hidden">
 
   <h2>Director Controls</h2>
@@ -146,7 +131,9 @@
   <input id="destinationInput" placeholder="Destination">
   <input id="agencyInput" placeholder="Agency">
 
-  <button class="btn primary" onclick="setMissionInfo()">UPDATE MISSION INFO</button>
+  <button class="btn primary" onclick="setMissionInfo()">
+    UPDATE MISSION INFO
+  </button>
 
 </section>
 
