@@ -10,40 +10,17 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
 
 /* =========================
-   AUTH
-========================= */
-
-const DIRECTOR_EMAIL = "andreatnt12@hotmail.com";
-const DIRECTOR_PASSWORD = "Ciao_2026";
-
-function getRole(email, password) {
-  if (
-    email === DIRECTOR_EMAIL &&
-    password === DIRECTOR_PASSWORD
-  ) {
-    return "director";
-  }
-
-  return "guest";
-}
-
-function isDirector(email, password) {
-  return getRole(email, password) === "director";
-}
-
-/* =========================
    STATE
 ========================= */
 
+let players = {};
+
 let state = {
   launchEnabled: false,
-
   countdownActive: true,
   launchTime: Date.now() + 3600000,
-
   news: "",
   newsImage: "",
-
   statusText: "STANDBY",
 
   missionInfo: {
@@ -57,6 +34,27 @@ let state = {
 };
 
 /* =========================
+   CONSTANTS
+========================= */
+
+const MINECRAFT_WORLD_NAME = "ISA headquarters";
+
+/* =========================
+   WORLD NORMALIZER
+========================= */
+
+function normalizeWorld(world) {
+  if (!world) return "";
+
+  // se arriva path o stringa lunga, estrai il nome mondo
+  if (world.includes("ISA headquarters")) {
+    return MINECRAFT_WORLD_NAME;
+  }
+
+  return world;
+}
+
+/* =========================
    LOGS
 ========================= */
 
@@ -66,22 +64,13 @@ function log(msg) {
 }
 
 /* =========================
-   WS
+   WS BROADCAST
 ========================= */
 
 function broadcast() {
   const payload = JSON.stringify({
-    launchEnabled: state.launchEnabled,
-    countdownActive: state.countdownActive,
-    launchTime: state.launchTime,
-
-    news: state.news,
-    newsImage: state.newsImage,
-
-    statusText: state.statusText,
-    missionInfo: state.missionInfo,
-
-    logs: state.logs
+    ...state,
+    players
   });
 
   wss.clients.forEach(c => {
@@ -90,187 +79,43 @@ function broadcast() {
 }
 
 /* =========================
+   MINECRAFT STATUS
+========================= */
+
+app.post("/mc-status", (req, res) => {
+  const { name, online, world } = req.body;
+
+  const fixedWorld = normalizeWorld(world);
+
+  players[name] = {
+    online,
+    world: fixedWorld
+  };
+
+  log(
+    `${name} → ${online ? "ONLINE" : "OFFLINE"} ${
+      fixedWorld ? `(world: ${fixedWorld})` : ""
+    }`
+  );
+
+  broadcast();
+
+  res.json({ ok: true });
+});
+
+/* =========================
    LOGIN
 ========================= */
 
 app.post("/login", (req, res) => {
-  const { email, password } = req.body;
+  const { email } = req.body;
 
   res.json({
-    role: getRole(email, password)
+    role:
+      email === "andreatnt12@hotmail.com"
+        ? "director"
+        : "guest"
   });
-});
-
-/* =========================
-   LAUNCH CONTROL
-========================= */
-
-app.post("/toggle", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  state.launchEnabled = !state.launchEnabled;
-  log("Launch toggled");
-
-  broadcast();
-  res.json({ ok: true });
-});
-
-app.post("/abort", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  state.launchEnabled = false;
-  log("MISSION ABORTED");
-
-  broadcast();
-  res.json({ ok: true });
-});
-
-/* =========================
-   COUNTDOWN
-========================= */
-
-app.post("/set-countdown", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  const {
-    years = 0,
-    months = 0,
-    weeks = 0,
-    days = 0,
-    hours = 0,
-    minutes = 0,
-    seconds = 0
-  } = req.body;
-
-  const ms =
-    years * 31536000000 +
-    months * 2592000000 +
-    weeks * 604800000 +
-    days * 86400000 +
-    hours * 3600000 +
-    minutes * 60000 +
-    seconds * 1000;
-
-  state.launchTime = Date.now() + ms;
-  state.countdownActive = true;
-
-  log("Countdown set");
-  broadcast();
-
-  res.json({ ok: true });
-});
-
-app.post("/stop-countdown", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  state.countdownActive = false;
-  log("Countdown stopped");
-
-  broadcast();
-  res.json({ ok: true });
-});
-
-app.post("/resume-countdown", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  state.countdownActive = true;
-  log("Countdown resumed");
-
-  broadcast();
-  res.json({ ok: true });
-});
-
-/* =========================
-   NEWS
-========================= */
-
-app.post("/set-news", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  state.news = req.body.message || "";
-  log("News updated");
-
-  broadcast();
-  res.json({ ok: true });
-});
-
-app.post("/clear-news", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  state.news = "";
-  log("News cleared");
-
-  broadcast();
-  res.json({ ok: true });
-});
-
-/* =========================
-   IMAGE
-========================= */
-
-app.post("/set-news-image", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  state.newsImage = req.body.image || "";
-  log("Image updated");
-
-  broadcast();
-  res.json({ ok: true });
-});
-
-app.post("/clear-image", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  state.newsImage = "";
-  log("Image cleared");
-
-  broadcast();
-  res.json({ ok: true });
-});
-
-/* =========================
-   STATUS TEXT
-========================= */
-
-app.post("/set-status-text", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  state.statusText = req.body.text || "STANDBY";
-  log("Status updated");
-
-  broadcast();
-  res.json({ ok: true });
-});
-
-/* =========================
-   MISSION INFO
-========================= */
-
-app.post("/set-mission-info", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  state.missionInfo = {
-    rocket: req.body.rocket || "",
-    payload: req.body.payload || "",
-    destination: req.body.destination || "",
-    agency: req.body.agency || ""
-  };
-
-  log("Mission info updated");
-  broadcast();
-
-  res.json({ ok: true });
 });
 
 /* =========================
@@ -279,14 +124,8 @@ app.post("/set-mission-info", (req, res) => {
 
 wss.on("connection", ws => {
   ws.send(JSON.stringify({
-    launchEnabled: state.launchEnabled,
-    countdownActive: state.countdownActive,
-    launchTime: state.launchTime,
-    news: state.news,
-    newsImage: state.newsImage,
-    statusText: state.statusText,
-    missionInfo: state.missionInfo,
-    logs: state.logs
+    ...state,
+    players
   }));
 });
 
