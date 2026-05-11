@@ -19,6 +19,7 @@ let state = {
   launchEnabled: false,
   countdownActive: true,
   launchTime: Date.now() + 3600000,
+
   news: "",
   newsImage: "",
   statusText: "STANDBY",
@@ -34,7 +35,25 @@ let state = {
 };
 
 /* =========================
-   CONSTANTS
+   AUTH SYSTEM
+========================= */
+
+const USERS = {
+  "andreatnt12@hotmail.com": {
+    password: "Ciao_2026",
+    role: "director"
+  }
+};
+
+function checkAuth(email, password) {
+  const user = USERS[email];
+  if (!user) return "guest";
+
+  return user.password === password ? user.role : "guest";
+}
+
+/* =========================
+   MINECRAFT CONFIG
 ========================= */
 
 const MINECRAFT_WORLD_NAME = "ISA headquarters";
@@ -46,7 +65,6 @@ const MINECRAFT_WORLD_NAME = "ISA headquarters";
 function normalizeWorld(world) {
   if (!world) return "";
 
-  // se arriva path o stringa lunga, estrai il nome mondo
   if (world.includes("ISA headquarters")) {
     return MINECRAFT_WORLD_NAME;
   }
@@ -55,7 +73,7 @@ function normalizeWorld(world) {
 }
 
 /* =========================
-   LOGS
+   LOG SYSTEM
 ========================= */
 
 function log(msg) {
@@ -64,7 +82,7 @@ function log(msg) {
 }
 
 /* =========================
-   WS BROADCAST
+   BROADCAST
 ========================= */
 
 function broadcast() {
@@ -79,7 +97,7 @@ function broadcast() {
 }
 
 /* =========================
-   MINECRAFT STATUS
+   MINECRAFT STATUS UPDATE
 ========================= */
 
 app.post("/mc-status", (req, res) => {
@@ -88,7 +106,7 @@ app.post("/mc-status", (req, res) => {
   const fixedWorld = normalizeWorld(world);
 
   players[name] = {
-    online,
+    online: !!online,
     world: fixedWorld
   };
 
@@ -108,14 +126,45 @@ app.post("/mc-status", (req, res) => {
 ========================= */
 
 app.post("/login", (req, res) => {
-  const { email } = req.body;
+  const { email, password } = req.body;
 
-  res.json({
-    role:
-      email === "andreatnt12@hotmail.com"
-        ? "director"
-        : "guest"
-  });
+  const role = checkAuth(email, password);
+
+  res.json({ role });
+});
+
+/* =========================
+   DIRECT ACTION PROTECTION
+========================= */
+
+function isDirector(email, password) {
+  return checkAuth(email, password) === "director";
+}
+
+/* =========================
+   ACTION ROUTES (SAFE)
+========================= */
+
+app.post("/toggle", (req, res) => {
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
+
+  state.launchEnabled = !state.launchEnabled;
+  log("Launch toggled");
+
+  broadcast();
+  res.json({ ok: true });
+});
+
+app.post("/abort", (req, res) => {
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
+
+  state.launchEnabled = false;
+  log("MISSION ABORTED");
+
+  broadcast();
+  res.json({ ok: true });
 });
 
 /* =========================
@@ -134,5 +183,5 @@ wss.on("connection", ws => {
 ========================= */
 
 server.listen(3000, () => {
-  console.log("ISA SYSTEM ONLINE");
+  console.log("🚀 ISA SYSTEM ONLINE");
 });
