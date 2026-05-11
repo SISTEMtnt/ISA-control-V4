@@ -1,15 +1,12 @@
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
-const multer = require("multer");
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const upload = multer({ limits: { fileSize: 10 * 1024 * 1024 } });
-
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "20mb" })); // importante per immagini base64
 app.use(express.static("public"));
 
 /* =========================
@@ -25,6 +22,7 @@ let state = {
 
   news: "",
   newsImage: "",
+
   statusText: "STANDBY",
 
   missionInfo: {
@@ -101,58 +99,63 @@ app.post("/mc-status", (req, res) => {
 
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
-  res.json({ role: checkAuth(email, password) });
+
+  res.json({
+    role: checkAuth(email, password)
+  });
 });
 
 /* =========================
-   UPLOAD NEWS + IMAGE (FIXED)
+   NEWS + IMAGE (BASE64)
 ========================= */
 
-app.post("/upload-news", upload.single("image"), (req, res) => {
+app.post("/set-news", (req, res) => {
   const { message } = req.body;
 
   state.news = message || "";
+  log("NEWS UPDATED");
 
-  if (req.file) {
-    state.newsImage =
-      "data:" +
-      req.file.mimetype +
-      ";base64," +
-      req.file.buffer.toString("base64");
-  }
+  broadcast();
+  res.json({ ok: true });
+});
 
-  log("NEWS UPDATED (text + image)");
+app.post("/set-news-image", (req, res) => {
+  const { image } = req.body;
 
+  state.newsImage = image || "";
+  log("IMAGE UPDATED");
+
+  broadcast();
+  res.json({ ok: true });
+});
+
+app.post("/clear-news", (req, res) => {
+  state.news = "";
+  log("NEWS CLEARED");
+  broadcast();
+  res.json({ ok: true });
+});
+
+app.post("/clear-image", (req, res) => {
+  state.newsImage = "";
+  log("IMAGE CLEARED");
   broadcast();
   res.json({ ok: true });
 });
 
 /* =========================
-   ACTIONS
+   MISSION INFO
 ========================= */
 
-function isDirector(email, password) {
-  return checkAuth(email, password) === "director";
-}
+app.post("/set-mission-info", (req, res) => {
+  state.missionInfo = {
+    rocket: req.body.rocket || "",
+    payload: req.body.payload || "",
+    destination: req.body.destination || "",
+    agency: req.body.agency || ""
+  };
 
-app.post("/toggle", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  state.launchEnabled = !state.launchEnabled;
-  log("Launch toggled");
-
-  broadcast();
-  res.json({ ok: true });
-});
-
-app.post("/abort", (req, res) => {
-  if (!isDirector(req.body.email, req.body.password))
-    return res.sendStatus(403);
-
-  state.launchEnabled = false;
-  log("MISSION ABORTED");
-
+  log("MISSION INFO UPDATED");
   broadcast();
   res.json({ ok: true });
 });
@@ -170,5 +173,5 @@ wss.on("connection", ws => {
 ========================= */
 
 server.listen(3000, () => {
-  console.log("🚀 ISA SYSTEM ONLINE");
+  console.log("🚀 ISA SYSTEM ONLINE (NO MULTER MODE)");
 });
