@@ -1,5 +1,7 @@
 let email = "";
+let password = "";
 let role = "guest";
+
 const API = window.location.origin;
 
 let launchTime = null;
@@ -11,7 +13,9 @@ let countdownActive = true;
 
 function connectWS() {
   const ws = new WebSocket(
-    location.protocol === "https:" ? `wss://${location.host}` : `ws://${location.host}`
+    location.protocol === "https:"
+      ? `wss://${location.host}`
+      : `ws://${location.host}`
   );
 
   ws.onmessage = (msg) => {
@@ -25,7 +29,7 @@ function connectWS() {
 connectWS();
 
 /* =========================
-   COUNTDOWN LOOP (CLIENT SIDE)
+   COUNTDOWN LOOP
 ========================= */
 
 setInterval(() => {
@@ -44,9 +48,15 @@ setInterval(() => {
 
   let s = Math.floor(diff / 1000);
 
-  const seconds = s % 60; s = Math.floor(s / 60);
-  const minutes = s % 60; s = Math.floor(s / 60);
-  const hours = s % 24; s = Math.floor(s / 24);
+  const seconds = s % 60;
+  s = Math.floor(s / 60);
+
+  const minutes = s % 60;
+  s = Math.floor(s / 60);
+
+  const hours = s % 24;
+  s = Math.floor(s / 24);
+
   const days = s;
 
   el.innerText = `${days}D ${hours}H ${minutes}M ${seconds}S`;
@@ -68,6 +78,7 @@ function updateUI(data) {
     data.news || "NO ACTIVE NEWS";
 
   const img = document.getElementById("newsImage");
+
   if (data.newsImage) {
     img.src = data.newsImage;
     img.style.display = "block";
@@ -79,10 +90,17 @@ function updateUI(data) {
     (data.logs || []).join("\n");
 
   if (data.missionInfo) {
-    document.getElementById("miRocket").innerText = data.missionInfo.rocket || "---";
-    document.getElementById("miPayload").innerText = data.missionInfo.payload || "---";
-    document.getElementById("miDestination").innerText = data.missionInfo.destination || "---";
-    document.getElementById("miAgency").innerText = data.missionInfo.agency || "---";
+    document.getElementById("miRocket").innerText =
+      data.missionInfo.rocket || "---";
+
+    document.getElementById("miPayload").innerText =
+      data.missionInfo.payload || "---";
+
+    document.getElementById("miDestination").innerText =
+      data.missionInfo.destination || "---";
+
+    document.getElementById("miAgency").innerText =
+      data.missionInfo.agency || "---";
   }
 
   if (!countdownActive) {
@@ -96,17 +114,25 @@ function updateUI(data) {
 
 async function login() {
   email = document.getElementById("email").value;
+  password = document.getElementById("password").value;
 
   const res = await fetch(`${API}/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email })
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      email,
+      password
+    })
   });
 
   const data = await res.json();
+
   role = data.role;
 
-  document.getElementById("role").innerText = "ROLE: " + role;
+  document.getElementById("role").innerText =
+    "ROLE: " + role;
 
   document.getElementById("directorPanel").classList.toggle(
     "hidden",
@@ -121,8 +147,14 @@ async function login() {
 const send = (path, body = {}) =>
   fetch(`${API}/${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, ...body })
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      email,
+      password,
+      ...body
+    })
   });
 
 /* =========================
@@ -130,40 +162,58 @@ const send = (path, body = {}) =>
 ========================= */
 
 const toggleLaunch = () => send("toggle");
+
 const abortMission = () => send("abort");
 
-const setCountdown = () => send("set-countdown", {
-  years: +years.value || 0,
-  months: +months.value || 0,
-  weeks: +weeks.value || 0,
-  days: +days.value || 0,
-  hours: +hours.value || 0,
-  minutes: +minutes.value || 0,
-  seconds: +seconds.value || 0
-});
+const setCountdown = () =>
+  send("set-countdown", {
+    years: +years.value || 0,
+    months: +months.value || 0,
+    weeks: +weeks.value || 0,
+    days: +days.value || 0,
+    hours: +hours.value || 0,
+    minutes: +minutes.value || 0,
+    seconds: +seconds.value || 0
+  });
 
-const stopCountdown = () => send("stop-countdown");
-const resumeCountdown = () => send("resume-countdown");
+const stopCountdown = () =>
+  send("stop-countdown");
+
+const resumeCountdown = () =>
+  send("resume-countdown");
 
 /* NEWS */
-const setNews = () => send("set-news", { message: newsInput.value });
-const clearNews = () => send("clear-news");
+
+const setNews = () =>
+  send("set-news", {
+    message: newsInput.value
+  });
+
+const clearNews = () =>
+  send("clear-news");
 
 /* IMAGE */
+
 function uploadImage() {
   const file = imageInput.files[0];
+
   if (!file) return;
 
   const reader = new FileReader();
+
   reader.onload = () =>
-    send("set-news-image", { image: reader.result });
+    send("set-news-image", {
+      image: reader.result
+    });
 
   reader.readAsDataURL(file);
 }
 
-const clearImage = () => send("clear-image");
+const clearImage = () =>
+  send("clear-image");
 
 /* MISSION INFO */
+
 const setMissionInfo = () =>
   send("set-mission-info", {
     rocket: rocketInput.value,
