@@ -8,7 +8,7 @@ let launchTime = null;
 let countdownActive = true;
 
 /* =========================
-   WS
+   WS CONNECTION
 ========================= */
 
 function connectWS() {
@@ -40,6 +40,8 @@ setInterval(() => {
   const el = document.getElementById("countdown");
   const stateEl = document.getElementById("countdownState");
 
+  if (!el || !stateEl) return;
+
   if (diff <= 0) {
     el.innerText = "LAUNCHED";
     stateEl.innerText = "DONE";
@@ -47,9 +49,16 @@ setInterval(() => {
   }
 
   let s = Math.floor(diff / 1000);
-  const seconds = s % 60; s = Math.floor(s / 60);
-  const minutes = s % 60; s = Math.floor(s / 60);
-  const hours = s % 24; s = Math.floor(s / 24);
+
+  const seconds = s % 60;
+  s = Math.floor(s / 60);
+
+  const minutes = s % 60;
+  s = Math.floor(s / 60);
+
+  const hours = s % 24;
+  s = Math.floor(s / 24);
+
   const days = s;
 
   el.innerText = `${days}D ${hours}H ${minutes}M ${seconds}S`;
@@ -61,6 +70,11 @@ setInterval(() => {
 ========================= */
 
 function updateUI(data) {
+  // safety fix
+  if (!data.players) data.players = {};
+  if (!data.missionInfo) data.missionInfo = {};
+  if (!data.logs) data.logs = [];
+
   launchTime = data.launchTime;
   countdownActive = data.countdownActive;
 
@@ -71,29 +85,29 @@ function updateUI(data) {
     data.news || "NO ACTIVE NEWS";
 
   const img = document.getElementById("newsImage");
-  if (data.newsImage) {
-    img.src = data.newsImage;
-    img.style.display = "block";
-  } else {
-    img.style.display = "none";
+  if (img) {
+    if (data.newsImage) {
+      img.src = data.newsImage;
+      img.style.display = "block";
+    } else {
+      img.style.display = "none";
+    }
   }
 
   document.getElementById("logs").innerText =
-    (data.logs || []).join("\n");
+    data.logs.join("\n");
 
-  if (data.missionInfo) {
-    document.getElementById("miRocket").innerText =
-      data.missionInfo.rocket || "---";
+  document.getElementById("miRocket").innerText =
+    data.missionInfo.rocket || "---";
 
-    document.getElementById("miPayload").innerText =
-      data.missionInfo.payload || "---";
+  document.getElementById("miPayload").innerText =
+    data.missionInfo.payload || "---";
 
-    document.getElementById("miDestination").innerText =
-      data.missionInfo.destination || "---";
+  document.getElementById("miDestination").innerText =
+    data.missionInfo.destination || "---";
 
-    document.getElementById("miAgency").innerText =
-      data.missionInfo.agency || "---";
-  }
+  document.getElementById("miAgency").innerText =
+    data.missionInfo.agency || "---";
 
   /* =========================
      MINECRAFT STATUS
@@ -112,8 +126,96 @@ function updateUI(data) {
   document.getElementById("playersBox").innerText =
     JSON.stringify(data.players, null, 2);
 
+  /* =========================
+     RADAR + MAP + WORKERS
+  ========================= */
+
+  updateRadar(data.players);
+  updateMap(data.players);
+  updateWorkers(data.players);
+
   if (!countdownActive) {
     document.getElementById("countdownState").innerText = "PAUSED";
+  }
+}
+
+/* =========================
+   RADAR SYSTEM
+========================= */
+
+function updateRadar(players) {
+  const radar = document.getElementById("radar");
+  if (!radar) return;
+
+  radar.innerHTML = "";
+
+  let i = 0;
+
+  for (const name in players) {
+    const p = players[name];
+    if (!p.online) continue;
+
+    const dot = document.createElement("div");
+    dot.className = "dot";
+
+    const angle = i * 2.2;
+    const radius = 90;
+
+    const x = 130 + Math.cos(angle) * radius;
+    const y = 130 + Math.sin(angle) * radius;
+
+    dot.style.left = x + "px";
+    dot.style.top = y + "px";
+
+    radar.appendChild(dot);
+    i++;
+  }
+}
+
+/* =========================
+   MAP SYSTEM
+========================= */
+
+function updateMap(players) {
+  const map = document.getElementById("map");
+  if (!map) return;
+
+  map.innerHTML = "";
+
+  let i = 0;
+
+  for (const name in players) {
+    const p = players[name];
+    if (!p.online) continue;
+
+    const el = document.createElement("div");
+    el.innerText = "📍 " + name;
+
+    el.style.position = "absolute";
+    el.style.left = (20 + i * 80) + "px";
+    el.style.top = "80px";
+    el.style.color = "#00e5ff";
+    el.style.textShadow = "0 0 10px #00e5ff";
+
+    map.appendChild(el);
+    i++;
+  }
+}
+
+/* =========================
+   WORKERS SYSTEM
+========================= */
+
+function updateWorkers(players) {
+  let count = 0;
+
+  for (const name in players) {
+    if (players[name].online) count++;
+  }
+
+  const el = document.getElementById("workersCount");
+  if (el) {
+    el.innerText = count + " ACTIVE WORKERS";
   }
 }
 
@@ -134,7 +236,8 @@ async function login() {
   const data = await res.json();
   role = data.role;
 
-  document.getElementById("role").innerText = "ROLE: " + role;
+  document.getElementById("role").innerText =
+    "ROLE: " + role;
 
   document.getElementById("directorPanel").classList.toggle(
     "hidden",
