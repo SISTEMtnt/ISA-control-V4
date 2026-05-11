@@ -10,15 +10,26 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
 
 /* =========================
-   USERS
+   AUTH
 ========================= */
 
-const USERS = {
-  "andreatnt12@hotmail.com": "director"
-};
+const DIRECTOR_EMAIL = "andreatnt12@hotmail.com";
+const DIRECTOR_PASSWORD = "Ciao_2026";
 
-const getRole = (email) => USERS[email] || "guest";
-const isDirector = (email) => getRole(email) === "director";
+function getRole(email, password) {
+  if (
+    email === DIRECTOR_EMAIL &&
+    password === DIRECTOR_PASSWORD
+  ) {
+    return "director";
+  }
+
+  return "guest";
+}
+
+function isDirector(email, password) {
+  return getRole(email, password) === "director";
+}
 
 /* =========================
    STATE
@@ -55,14 +66,6 @@ function log(msg) {
 }
 
 /* =========================
-   COUNTDOWN (SERVER ONLY TIME SOURCE)
-========================= */
-
-function msLeft() {
-  return Math.max(0, state.launchTime - Date.now());
-}
-
-/* =========================
    WS
 ========================= */
 
@@ -87,11 +90,15 @@ function broadcast() {
 }
 
 /* =========================
-   AUTH
+   LOGIN
 ========================= */
 
 app.post("/login", (req, res) => {
-  res.json({ role: getRole(req.body.email) });
+  const { email, password } = req.body;
+
+  res.json({
+    role: getRole(email, password)
+  });
 });
 
 /* =========================
@@ -99,7 +106,8 @@ app.post("/login", (req, res) => {
 ========================= */
 
 app.post("/toggle", (req, res) => {
-  if (!isDirector(req.body.email)) return res.sendStatus(403);
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
 
   state.launchEnabled = !state.launchEnabled;
   log("Launch toggled");
@@ -109,7 +117,8 @@ app.post("/toggle", (req, res) => {
 });
 
 app.post("/abort", (req, res) => {
-  if (!isDirector(req.body.email)) return res.sendStatus(403);
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
 
   state.launchEnabled = false;
   log("MISSION ABORTED");
@@ -123,7 +132,8 @@ app.post("/abort", (req, res) => {
 ========================= */
 
 app.post("/set-countdown", (req, res) => {
-  if (!isDirector(req.body.email)) return res.sendStatus(403);
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
 
   const {
     years = 0,
@@ -154,7 +164,8 @@ app.post("/set-countdown", (req, res) => {
 });
 
 app.post("/stop-countdown", (req, res) => {
-  if (!isDirector(req.body.email)) return res.sendStatus(403);
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
 
   state.countdownActive = false;
   log("Countdown stopped");
@@ -164,7 +175,8 @@ app.post("/stop-countdown", (req, res) => {
 });
 
 app.post("/resume-countdown", (req, res) => {
-  if (!isDirector(req.body.email)) return res.sendStatus(403);
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
 
   state.countdownActive = true;
   log("Countdown resumed");
@@ -178,7 +190,8 @@ app.post("/resume-countdown", (req, res) => {
 ========================= */
 
 app.post("/set-news", (req, res) => {
-  if (!isDirector(req.body.email)) return res.sendStatus(403);
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
 
   state.news = req.body.message || "";
   log("News updated");
@@ -188,7 +201,8 @@ app.post("/set-news", (req, res) => {
 });
 
 app.post("/clear-news", (req, res) => {
-  if (!isDirector(req.body.email)) return res.sendStatus(403);
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
 
   state.news = "";
   log("News cleared");
@@ -202,7 +216,8 @@ app.post("/clear-news", (req, res) => {
 ========================= */
 
 app.post("/set-news-image", (req, res) => {
-  if (!isDirector(req.body.email)) return res.sendStatus(403);
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
 
   state.newsImage = req.body.image || "";
   log("Image updated");
@@ -212,7 +227,8 @@ app.post("/set-news-image", (req, res) => {
 });
 
 app.post("/clear-image", (req, res) => {
-  if (!isDirector(req.body.email)) return res.sendStatus(403);
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
 
   state.newsImage = "";
   log("Image cleared");
@@ -226,7 +242,8 @@ app.post("/clear-image", (req, res) => {
 ========================= */
 
 app.post("/set-status-text", (req, res) => {
-  if (!isDirector(req.body.email)) return res.sendStatus(403);
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
 
   state.statusText = req.body.text || "STANDBY";
   log("Status updated");
@@ -240,7 +257,8 @@ app.post("/set-status-text", (req, res) => {
 ========================= */
 
 app.post("/set-mission-info", (req, res) => {
-  if (!isDirector(req.body.email)) return res.sendStatus(403);
+  if (!isDirector(req.body.email, req.body.password))
+    return res.sendStatus(403);
 
   state.missionInfo = {
     rocket: req.body.rocket || "",
